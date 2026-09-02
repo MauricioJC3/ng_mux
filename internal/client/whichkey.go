@@ -34,6 +34,7 @@ var builtinWhichKey = []whichKeyRow{
 	{"0 – 9", "select window by number"},
 	{"& ", "close the current window"},
 	{"( / )", "previous / next session"},
+	{"m", "session help — new / attach / list"},
 	{"[", "copy mode — scroll and select"},
 	{"]", "paste the copy buffer"},
 	{":", "command prompt"},

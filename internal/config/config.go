@@ -5,6 +5,7 @@
 //	set history-limit 5000
 //	set default-shell /bin/bash
 //	set mouse on
+//	set escape-time 25
 //	set status-bg 4
 //	set status-fg 7
 //	bind s split-vertical
@@ -33,6 +34,7 @@ type Config struct {
 	HistoryLimit int               // scrollback lines kept per pane
 	DefaultShell string            // overrides $SHELL / platform default when set
 	Mouse        bool              // reserved for a later phase
+	EscapeTime   int               // ms to wait for a sequence after a lone Esc (tmux's escape-time)
 	StatusFG     int               // status bar foreground colour index (0..255)
 	StatusBG     int               // status bar background colour index (0..255)
 	Binds        map[string]string // key (single rune) -> command name
@@ -48,6 +50,7 @@ func Default() Config {
 		Prefix:       DefaultPrefix,
 		HistoryLimit: 2000,
 		Mouse:        true,
+		EscapeTime:   25,
 		StatusFG:     0,
 		StatusBG:     7,
 		Binds:        map[string]string{},
@@ -153,6 +156,12 @@ func (c *Config) set(name, value string) error {
 			return err
 		}
 		c.Mouse = on
+	case "escape-time":
+		n, err := strconv.Atoi(value)
+		if err != nil || n < 0 {
+			return fmt.Errorf("escape-time must be a non-negative integer (milliseconds)")
+		}
+		c.EscapeTime = n
 	case "status-fg":
 		n, err := parseColor(value)
 		if err != nil {
