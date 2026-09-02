@@ -7,6 +7,17 @@ import (
 	"time"
 )
 
+// On Unix the "conpty" path is always the real pty, and CheckAvailable is a
+// no-op — Start must never take the winpty fallback.
+func TestBackendSelectionUnix(t *testing.T) {
+	if !conPTYAvailable() {
+		t.Fatal("conPTYAvailable() = false on Unix, want true")
+	}
+	if err := CheckAvailable(); err != nil {
+		t.Fatalf("CheckAvailable() = %v, want nil", err)
+	}
+}
+
 // TestReadUnblocksWhenChildExits is the core contract the server's output pump
 // depends on: once the shell on the pty exits, a Read on the master end must
 // return an error so pump() can stop and the pane can be reaped. Before ptyx

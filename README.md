@@ -3,10 +3,10 @@
 A small, cross-platform terminal multiplexer written in pure Go. Runs on Linux,
 macOS and Windows from the same codebase.
 
-On Windows it needs **ConPTY**, so **Windows 10 1809+ or Windows Server 2019+**.
-Older builds (Windows Server 2016 and earlier) have no pseudo-console API;
-ngmux detects this at startup and exits with a clear message instead of
-crashing. A winpty fallback for those is tracked as future work.
+On Windows it uses **ConPTY** where available (Windows 10 1809+ / Server 2019+).
+Older builds (Windows Server 2016 and earlier) have no ConPTY, so ngmux falls
+back to **winpty**: its native helpers are embedded in the executable and
+unpacked to `%LOCALAPPDATA%\ngmux\` on first run — nothing extra to install.
 
 Like tmux, it is **client/server**: a background daemon owns every session,
 pane, pseudo-terminal and terminal emulator; thin client processes attach to it,
@@ -41,7 +41,8 @@ Working now:
 - status bar: session name, window list with the active marker, clock
 - kill a pane; detach and re-attach
 - `ngmux ls`, `ngmux kill-session -t name`, `ngmux kill-server`
-- cross-platform PTY (ConPTY on Windows) and IPC (Unix socket / named pipe)
+- cross-platform PTY (real pty on Unix; ConPTY or embedded winpty on Windows)
+  and IPC (Unix socket / named pipe)
 
 Deliberately out of scope: hooks, session groups, `choose-tree`,
 system-clipboard integration.
@@ -194,7 +195,7 @@ internal/
   protocol          length-prefixed JSON framing, client<->server messages
   ipc               transport: Unix domain socket / Windows named pipe
   config            ngmux.conf parser (prefix, binds, limits, colours)
-  ptyx              pseudo-terminal wrapper (aymanbagabas/go-pty)
+  ptyx              pseudo-terminal wrapper (go-pty; embedded winpty fallback)
   vterm             VT100/xterm emulator wrapper (hinshun/vt10x) + scrollback
   layout            binary split tree -> pane rectangles; split / remove / resize
   render            composite panes + borders + status bar, ANSI frame diffing

@@ -3,26 +3,41 @@
 package ptyx
 
 import (
-	"fmt"
+	"sync"
 
 	"golang.org/x/sys/windows"
+
+	"github.com/MauricioJC3/ng_mux/internal/ptyx/winpty"
 )
 
-// CheckAvailable fails early, with an actionable message, when this Windows
-// build has no pseudo-terminal API ngmux can use. Today that means ConPTY
-// (kernel32!CreatePseudoConsole), added in Windows 10 1809 / Windows Server
-// 2019. Older builds — Windows Server 2016, for one — land here; without this
-// guard the go-pty call panics on the missing kernel32 export instead of
-// reporting something the user can act on.
+var conptyOnce struct {
+	sync.Once
+	ok bool
+}
+
+// conPTYAvailable reports whether this Windows build has the ConPTY API
+// (kernel32!CreatePseudoConsole), added in Windows 10 1809 / Server 2019. The
+// probe uses LazyProc.Find, which returns an error rather than panicking the
+// way Addr/Call do on the missing export.
+func conPTYAvailable() bool {
+	conptyOnce.Do(func() {
+		err := windows.NewLazySystemDLL("kernel32.dll").NewProc("CreatePseudoConsole").Find()
+		conptyOnce.ok = err == nil
+	})
+	return conptyOnce.ok
+}
+
+// CheckAvailable succeeds when ngmux can open a pty on this machine: ConPTY when
+// present, otherwise the embedded winpty fallback. It only fails if neither is
+// usable (winpty binaries missing or unextractable).
 func CheckAvailable() error {
-	if err := windows.NewLazySystemDLL("kernel32.dll").NewProc("CreatePseudoConsole").Find(); err != nil {
-		major, minor, build := windows.RtlGetNtVersionNumbers()
-		return fmt.Errorf(
-			"ngmux needs ConPTY, which this Windows build (%d.%d.%d) does not have. "+
-				"ConPTY requires Windows 10 1809+ or Windows Server 2019+. "+
-				"Run ngmux on a newer Windows for now",
-			major, minor, build&0xffff,
-		)
+	if conPTYAvailable() {
+		return nil
 	}
-	return nil
+	return winpty.Available()
+}
+
+// startFallback runs the child through winpty, for Windows without ConPTY.
+func startFallback(prog string, args []string, dir string, env []string, cols, rows int) (backend, error) {
+	return startWinpty(prog, args, dir, env, cols, rows)
 }

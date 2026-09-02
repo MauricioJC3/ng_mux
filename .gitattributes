@@ -1,0 +1,3 @@
+# Vendored winpty helpers: never touch line endings or try to diff them.
+internal/ptyx/winpty/bin/winpty.dll        binary
+internal/ptyx/winpty/bin/winpty-agent.exe  binary
