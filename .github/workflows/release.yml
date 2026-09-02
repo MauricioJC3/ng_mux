@@ -42,3 +42,6 @@ jobs:
         with:
           files: dist/*
           generate_release_notes: true
+          # Tags like v0.4.0-rc.1 ship as prereleases, so `releases/latest`
+          # (and the installer) keep pointing at the last stable tag.
+          prerelease: ${{ contains(github.ref_name, '-') }}
