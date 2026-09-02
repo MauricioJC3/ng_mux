@@ -50,13 +50,63 @@ try {
 
 Move-Item -Force $tmp $dest
 
-$userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-if (($userPath -split ';') -notcontains $installDir) {
-	[Environment]::SetEnvironmentVariable('Path', "$userPath;$installDir", 'User')
-	$env:Path = "$env:Path;$installDir"
+# --- Put the install dir on the user PATH (idempotent, case/backslash tolerant) ---
+function Test-DirOnPath([string]$dir, [string]$scope) {
+	$cur = [Environment]::GetEnvironmentVariable('Path', $scope)
+	if (-not $cur) { return $false }
+	$want = $dir.TrimEnd('\').ToLowerInvariant()
+	foreach ($e in ($cur -split ';')) {
+		if ($e -and $e.TrimEnd('\').ToLowerInvariant() -eq $want) { return $true }
+	}
+	return $false
+}
+
+$onUserPath = Test-DirOnPath $installDir 'User'
+if (-not $onUserPath) {
+	$cur = [Environment]::GetEnvironmentVariable('Path', 'User')
+	$new = if ($cur) { $cur.TrimEnd(';') + ';' + $installDir } else { $installDir }
+	[Environment]::SetEnvironmentVariable('Path', $new, 'User')
 	Write-Host ""
-	Write-Host "Added $installDir to your user PATH. Open a new terminal, then run: ngmux"
+	Write-Host "Added $installDir to your user PATH."
 } else {
 	Write-Host ""
-	Write-Host "Installed. Run: ngmux"
+	Write-Host "$installDir is already on your user PATH."
 }
+
+# Make it usable in this session immediately.
+if (($env:Path -split ';' | ForEach-Object { $_.TrimEnd('\').ToLowerInvariant() }) -notcontains $installDir.TrimEnd('\').ToLowerInvariant()) {
+	$env:Path = "$env:Path;$installDir"
+}
+
+# Broadcast the environment change so processes started afterwards (new
+# terminals, launched from Explorer/Start) pick it up without a sign-out.
+try {
+	if (-not ('Win32.Env' -as [type])) {
+		Add-Type -Namespace Win32 -Name Env -MemberDefinition @'
+[System.Runtime.InteropServices.DllImport("user32.dll", SetLastError=true, CharSet=System.Runtime.InteropServices.CharSet.Auto)]
+public static extern System.IntPtr SendMessageTimeout(System.IntPtr hWnd, uint Msg, System.UIntPtr wParam, string lParam, uint fuFlags, uint uTimeout, out System.UIntPtr lpdwResult);
+'@
+	}
+	$res = [System.UIntPtr]::Zero
+	[void][Win32.Env]::SendMessageTimeout([System.IntPtr]0xffff, 0x1A, [System.UIntPtr]::Zero, 'Environment', 2, 5000, [ref]$res)
+} catch { }
+
+# --- Tell the user plainly where things stand ---
+Write-Host ""
+$profileHijacksPath = $false
+foreach ($pf in @($PROFILE.CurrentUserAllHosts, $PROFILE.CurrentUserCurrentHost)) {
+	if ($pf -and (Test-Path $pf) -and (Select-String -Path $pf -Pattern '\$env:Path\s*=[^=]' -Quiet -ErrorAction SilentlyContinue)) {
+		$profileHijacksPath = $true
+	}
+}
+if ($profileHijacksPath) {
+	Write-Host "Note: your PowerShell profile sets `$env:Path directly, which can hide ngmux."
+	Write-Host "      Either change that line to append (`$env:Path += ...), or add this once:"
+	Write-Host ""
+	Write-Host "        'function ngmux { & `"$dest`" @args }' | Add-Content `$PROFILE"
+	Write-Host ""
+} else {
+	Write-Host "Done. Open a NEW terminal and run:  ngmux"
+	Write-Host "(this session too:  ngmux)"
+}
+Write-Host "Full path, always works:  $dest"
