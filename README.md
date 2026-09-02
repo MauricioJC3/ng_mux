@@ -57,11 +57,15 @@ curl -fsSL https://raw.githubusercontent.com/MauricioJC3/ng_mux/main/install.sh 
 It drops the `tmux2` binary in `~/.local/bin` (override with `TMUX2_INSTALL_DIR`)
 and adds that directory to your shell's `PATH` if it is missing.
 
-**Windows** (PowerShell):
+**Windows** — from any shell (cmd, PowerShell, Nushell, Git Bash):
 
 ```powershell
-irm https://raw.githubusercontent.com/MauricioJC3/ng_mux/main/install.ps1 | iex
+powershell -c "irm https://raw.githubusercontent.com/MauricioJC3/ng_mux/main/install.ps1 | iex"
 ```
+
+Already in a PowerShell prompt? `irm …/install.ps1 | iex` on its own works too.
+Prefer a package? `go install github.com/MauricioJC3/ng_mux/cmd/tmux2@latest`
+(needs Go 1.27+) drops `tmux2.exe` in `~\go\bin`.
 
 **Update** to the latest release at any time:
 
