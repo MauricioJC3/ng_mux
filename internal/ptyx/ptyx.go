@@ -40,6 +40,10 @@ type Config struct {
 
 // Start opens a pty and launches the configured program on it.
 func Start(cfg Config) (*Pane, error) {
+	if err := CheckAvailable(); err != nil {
+		return nil, err
+	}
+
 	cols, rows := cfg.Cols, cfg.Rows
 	if cols <= 0 {
 		cols = 80

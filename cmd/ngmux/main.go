@@ -22,6 +22,7 @@ import (
 	"github.com/MauricioJC3/ng_mux/internal/client"
 	"github.com/MauricioJC3/ng_mux/internal/ipc"
 	"github.com/MauricioJC3/ng_mux/internal/protocol"
+	"github.com/MauricioJC3/ng_mux/internal/ptyx"
 	"github.com/MauricioJC3/ng_mux/internal/server"
 )
 
@@ -131,6 +132,9 @@ func sessionFlag(args []string) (string, error) {
 
 // cmdNew attaches, starting the daemon first if nothing is listening.
 func cmdNew(ep ipc.Endpoint, args []string) error {
+	if err := ptyx.CheckAvailable(); err != nil {
+		return err
+	}
 	name, err := sessionFlag(args)
 	if err != nil {
 		return err
@@ -144,6 +148,9 @@ func cmdNew(ep ipc.Endpoint, args []string) error {
 }
 
 func cmdAttach(ep ipc.Endpoint, args []string) error {
+	if err := ptyx.CheckAvailable(); err != nil {
+		return err
+	}
 	name, err := sessionFlag(args)
 	if err != nil {
 		return err

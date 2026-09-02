@@ -1,7 +1,12 @@
 # ngmux
 
 A small, cross-platform terminal multiplexer written in pure Go. Runs on Linux,
-macOS and Windows 10+ from the same codebase.
+macOS and Windows from the same codebase.
+
+On Windows it needs **ConPTY**, so **Windows 10 1809+ or Windows Server 2019+**.
+Older builds (Windows Server 2016 and earlier) have no pseudo-console API;
+ngmux detects this at startup and exits with a clear message instead of
+crashing. A winpty fallback for those is tracked as future work.
 
 Like tmux, it is **client/server**: a background daemon owns every session,
 pane, pseudo-terminal and terminal emulator; thin client processes attach to it,
