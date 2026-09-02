@@ -92,16 +92,23 @@ func usage(w io.Writer) {
   ngmux version              print the version
   ngmux <command> [args...]  run a command on the running server, e.g.
                              ngmux new-window
+                             ngmux new-session -s logs
                              ngmux send-keys -t 0 "ls -la" Enter
                              ngmux select-layout tiled
                              ngmux rename-window build
+
+sessions:
+  ngmux new -s NAME          create a session and attach to it
+  ngmux attach -t NAME       re-attach to a running session
+  ngmux ls                   list sessions (name, windows, panes)
+  Ctrl-b m                   show this session cheat-sheet while attached
 
 prefix key: Ctrl-b
   "  split top/bottom      %  split left/right       x  kill pane
   o  next pane             ;  previous pane          arrows  focus pane
   H/J/K/L  resize pane     d  detach                 :  command prompt
   c  new window            n / p  next / prev window   0-9  select window
-  &  kill window           ( / )  prev / next session
+  &  kill window           ( / )  prev / next session   m  session help
   [  copy-mode             ]  paste
 `)
 }
