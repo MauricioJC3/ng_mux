@@ -8,26 +8,22 @@ import (
 	"strings"
 )
 
-// DefaultShell picks a shell for Windows. Preference order:
-//  1. %COMSPEC% if it points at something real (usually cmd.exe)
-//  2. PowerShell (pwsh.exe if on PATH, else Windows PowerShell)
-//  3. cmd.exe as a last resort
+// DefaultShell picks a shell for Windows: PowerShell 7 (pwsh.exe) first, then
+// Windows PowerShell 5.1, then cmd.exe. See windowsDefaultShell for the full
+// order and why cmd is last. `set default-shell <path>` in the config overrides
+// this entirely.
 func DefaultShell() string {
-	if c := os.Getenv("COMSPEC"); c != "" {
-		if _, err := os.Stat(c); err == nil {
-			return c
-		}
-	}
-	if p, err := lookPath("pwsh.exe"); err == nil {
-		return p
-	}
-	if sysroot := os.Getenv("SystemRoot"); sysroot != "" {
-		ps := filepath.Join(sysroot, "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
-		if _, err := os.Stat(ps); err == nil {
-			return ps
-		}
-	}
-	return "cmd.exe"
+	return windowsDefaultShell(shellProbe{
+		lookPath: func(name string) (string, bool) {
+			p, err := lookPath(name)
+			return p, err == nil
+		},
+		getenv: os.Getenv,
+		isFile: func(path string) bool {
+			fi, err := os.Stat(path)
+			return err == nil && !fi.IsDir()
+		},
+	})
 }
 
 // defaultShellArgs returns startup args appropriate to the chosen shell.
