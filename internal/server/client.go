@@ -17,9 +17,10 @@ type client struct {
 	closeOnce sync.Once
 	closed    chan struct{}
 
-	mu   sync.Mutex
-	prev *render.Frame
-	sess string // name of the session this client is currently viewing
+	mu         sync.Mutex
+	prev       *render.Frame
+	sess       string // name of the session this client is currently viewing
+	cols, rows int    // last terminal size this client reported
 }
 
 func newClient(pc *protocol.Conn, session string) *client {
@@ -44,6 +45,20 @@ func (c *client) setSession(name string) {
 	c.sess = name
 	c.prev = nil
 	c.mu.Unlock()
+}
+
+// setSize records the client's last reported terminal size.
+func (c *client) setSize(cols, rows int) {
+	c.mu.Lock()
+	c.cols, c.rows = cols, rows
+	c.mu.Unlock()
+}
+
+// size returns the client's last reported terminal size (0,0 if unknown).
+func (c *client) size() (cols, rows int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.cols, c.rows
 }
 
 // send queues a message and reports whether it was accepted. A full queue (a
