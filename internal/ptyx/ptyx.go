@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 
 	"github.com/aymanbagabas/go-pty"
 )
@@ -17,6 +18,10 @@ import (
 type Pane struct {
 	pty pty.Pty
 	cmd *pty.Cmd
+
+	closeOnce sync.Once
+	exited    chan struct{} // closed once the child has been reaped
+	waitErr   error         // result of cmd.Wait; read only after exited is closed
 }
 
 // Config controls how a Pane is started.
@@ -75,7 +80,17 @@ func Start(cfg Config) (*Pane, error) {
 		return nil, fmt.Errorf("ptyx: start %q: %w", prog, err)
 	}
 
-	return &Pane{pty: pt, cmd: cmd}, nil
+	p := &Pane{pty: pt, cmd: cmd, exited: make(chan struct{})}
+	// Reap the child ourselves. Without this the process lingers as a zombie
+	// and, more importantly, a Read on the master never unblocks when the shell
+	// exits (the parent still holds a slave fd open), so the pane is never
+	// reaped. Closing the pty once the child is gone wakes any pending Read.
+	go func() {
+		p.waitErr = p.cmd.Wait()
+		close(p.exited)
+		p.closePTY()
+	}()
+	return p, nil
 }
 
 // Read implements io.Reader over the pty master end.
@@ -93,15 +108,27 @@ func (p *Pane) Resize(cols, rows int) error {
 	return p.pty.Resize(cols, rows)
 }
 
-// Wait blocks until the child process exits.
-func (p *Pane) Wait() error { return p.cmd.Wait() }
+// Wait blocks until the child process has exited and been reaped, returning the
+// child's exit error (nil on a clean exit).
+func (p *Pane) Wait() error {
+	<-p.exited
+	return p.waitErr
+}
 
-// Close terminates the child (best effort) and releases the pty.
+// Close terminates the child (best effort) and releases the pty. The internal
+// reaper goroutine also closes the pty once the child exits on its own; both
+// paths are safe to run and closePTY makes the pty close happen exactly once.
 func (p *Pane) Close() error {
 	if p.cmd != nil && p.cmd.Process != nil {
 		_ = p.cmd.Process.Kill()
 	}
-	return p.pty.Close()
+	return p.closePTY()
+}
+
+func (p *Pane) closePTY() error {
+	var err error
+	p.closeOnce.Do(func() { err = p.pty.Close() })
+	return err
 }
 
 var _ io.ReadWriteCloser = (*Pane)(nil)
