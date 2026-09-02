@@ -11,6 +11,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/MauricioJC3/ng_mux/internal/config"
@@ -199,6 +200,10 @@ func Attach(ep ipc.Endpoint, session string, in, out *os.File) error {
 
 	escapeDelay := time.Duration(cfg.EscapeTime) * time.Millisecond
 
+	// overlay is set while a local popup (the Ctrl-b m cheat-sheet) owns the
+	// screen, so readFrames holds back server frames that would paint over it.
+	var overlay atomic.Bool
+
 	stopResize := make(chan struct{})
 	defer close(stopResize)
 	go termio.WatchResize(out, func(s termio.Size) {
@@ -207,10 +212,10 @@ func Attach(ep ipc.Endpoint, session string, in, out *os.File) error {
 
 	// Input goroutine: stdin -> server. Ends when stdin errors.
 	inputErr := make(chan error, 1)
-	go func() { inputErr <- forwardInput(newInReader(in), w, out, pc, km, escapeDelay) }()
+	go func() { inputErr <- forwardInput(newInReader(in), w, out, pc, km, escapeDelay, &overlay) }()
 
 	// Main goroutine: server -> stdout, until Bye or disconnect.
-	readErr := readFrames(pc, w)
+	readErr := readFrames(pc, w, &overlay)
 
 	select {
 	case <-inputErr:
@@ -254,7 +259,10 @@ func Exec(ep ipc.Endpoint, line string) error {
 }
 
 // readFrames pumps server messages to the terminal until the session ends.
-func readFrames(pc *protocol.Conn, out io.Writer) error {
+// While overlay is set a local popup owns the screen, so screen-painting
+// messages are dropped; the input loop sends a Refresh when it clears the
+// overlay, so the next frame is a clean full repaint.
+func readFrames(pc *protocol.Conn, out io.Writer, overlay *atomic.Bool) error {
 	for {
 		msg, err := pc.Read()
 		if err != nil {
@@ -262,11 +270,14 @@ func readFrames(pc *protocol.Conn, out io.Writer) error {
 		}
 		switch msg.Type {
 		case protocol.TypeFrame:
+			if overlay.Load() {
+				continue
+			}
 			if _, err := out.Write(msg.Data); err != nil {
 				return err
 			}
 		case protocol.TypeExecReply:
-			if msg.Name != "" {
+			if msg.Name != "" && !overlay.Load() {
 				out.Write([]byte("\x1b[999;1H\x1b[2K" + firstLine(msg.Name)))
 			}
 		case protocol.TypeBye:
@@ -289,7 +300,7 @@ func firstLine(s string) string {
 // ':' command prompt), everything else straight to the focused pane. term is
 // the real terminal, used only to size the prefix cheat-sheet popup. escapeDelay
 // is how long a lone Esc waits for the rest of a sequence before being sent.
-func forwardInput(br *inReader, out *lockedWriter, term *os.File, pc *protocol.Conn, km keymap, escapeDelay time.Duration) error {
+func forwardInput(br *inReader, out *lockedWriter, term *os.File, pc *protocol.Conn, km keymap, escapeDelay time.Duration, overlay *atomic.Bool) error {
 	prefix := km.prefix
 	for {
 		b, err := br.ReadByte()
@@ -316,9 +327,9 @@ func forwardInput(br *inReader, out *lockedWriter, term *os.File, pc *protocol.C
 				return err
 			}
 			hide()
-			// Repaint over where the panel was. The ':' prompt draws itself and
-			// owns the bottom row, so let it refresh on its own instead.
-			if shown && cmd != ':' {
+			// Repaint over where the panel was. The ':' prompt and the Ctrl-b m
+			// popup own the screen themselves and refresh on their own after.
+			if shown && cmd != ':' && cmd != 'm' {
 				pc.Write(protocol.Message{Type: protocol.TypeRefresh})
 			}
 			switch {
@@ -333,10 +344,13 @@ func forwardInput(br *inReader, out *lockedWriter, term *os.File, pc *protocol.C
 				}
 			case cmd == 'm' && km.binds["m"] == "":
 				// A local cheat-sheet: how to create, list and move between
-				// sessions. Any key dismisses it.
+				// sessions. Any key dismisses it. overlay keeps server frames
+				// from painting over it while it is up.
+				overlay.Store(true)
 				hideHelp := showSessionHelp(out, term)
 				_, _ = br.ReadByte()
 				hideHelp()
+				overlay.Store(false)
 				pc.Write(protocol.Message{Type: protocol.TypeRefresh})
 			default:
 				line, ok := km.resolveKey(cmd)

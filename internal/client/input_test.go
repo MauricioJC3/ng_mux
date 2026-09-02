@@ -2,8 +2,11 @@ package client
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"net"
+	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -80,6 +83,48 @@ func TestHandleEscapeForwardsLoneEsc(t *testing.T) {
 	}
 	if err := <-done; err != nil {
 		t.Fatalf("handleEscape: %v", err)
+	}
+}
+
+// A frame that arrives while a local popup owns the screen must be dropped, and
+// frames after the overlay clears must flow again.
+func TestReadFramesHoldsFramesWhileOverlayIsUp(t *testing.T) {
+	srvSide, cliSide := net.Pipe()
+	srv := protocol.NewConn(srvSide)
+
+	var buf bytes.Buffer
+	var overlay atomic.Bool
+	overlay.Store(true)
+
+	done := make(chan error, 1)
+	go func() { done <- readFrames(protocol.NewConn(cliSide), &buf, &overlay) }()
+
+	// Sent while the overlay is up: must not reach the terminal.
+	if err := srv.Write(protocol.Message{Type: protocol.TypeFrame, Data: []byte("HIDDEN")}); err != nil {
+		t.Fatalf("write HIDDEN: %v", err)
+	}
+	// This second write only unblocks once readFrames has looped back to Read,
+	// i.e. it has finished processing (and dropping) the HIDDEN frame.
+	if err := srv.Write(protocol.Message{Type: protocol.TypeExecReply}); err != nil {
+		t.Fatalf("write sync: %v", err)
+	}
+	overlay.Store(false)
+	if err := srv.Write(protocol.Message{Type: protocol.TypeFrame, Data: []byte("SHOWN")}); err != nil {
+		t.Fatalf("write SHOWN: %v", err)
+	}
+	if err := srv.Write(protocol.Message{Type: protocol.TypeBye}); err != nil {
+		t.Fatalf("write bye: %v", err)
+	}
+
+	if err := <-done; !errors.Is(err, errDetached) {
+		t.Fatalf("readFrames ended with %v, want errDetached", err)
+	}
+	got := buf.String()
+	if strings.Contains(got, "HIDDEN") {
+		t.Errorf("a frame was written while the overlay was up: %q", got)
+	}
+	if !strings.Contains(got, "SHOWN") {
+		t.Errorf("a frame after the overlay cleared was not written: %q", got)
 	}
 }
 
