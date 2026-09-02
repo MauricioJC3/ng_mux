@@ -14,6 +14,8 @@ Working now:
 
 - background daemon, auto-spawned on first `ngmux`
 - **multiple sessions**, each with **multiple windows**, each a tree of panes
+  (`ngmux new -s NAME`, `Ctrl-b : new-session -s NAME`, `Ctrl-b m` for the
+  session cheat-sheet)
 - split a pane left/right or top/bottom; **resize panes** with the keyboard
 - move focus between panes; cycle / select / kill windows
 - switch between sessions while attached
@@ -108,6 +110,25 @@ Targets: `-t <session>`, `-t <session>:<window>`, `-t <session>:<window>.<pane>`
 (pane and window are indices). `send-keys` arguments are key names (`Enter`,
 `Space`, `C-c`, `Up`, …) or literal strings.
 
+### Sessions
+
+A session is a workspace that outlives the client. Detach and its shells (and
+whatever they are running) keep going in the daemon; re-attach later, from
+anywhere.
+
+```
+ngmux new -s work            create "work" and attach
+ngmux new -s logs            create a second session
+ngmux ls                     list them: name, windows, panes, (attached)
+ngmux attach -t work         jump back into one
+ngmux kill-session -t logs   stop one session and its shells
+```
+
+While attached: `Ctrl-b (` / `Ctrl-b )` move between sessions, `Ctrl-b :
+new-session -s NAME` creates one without leaving, `Ctrl-b : rename-session NAME`
+renames the current one, `Ctrl-b d` detaches, and `Ctrl-b m` pops up this list.
+An unnamed session gets the next free number (`0`, `1`, `2`, …), like tmux.
+
 ### Key bindings
 
 Prefix is **Ctrl-b** (same as tmux).
@@ -126,6 +147,7 @@ Prefix is **Ctrl-b** (same as tmux).
 | `Ctrl-b 0`–`9`  | select window by index     |
 | `Ctrl-b &`      | kill window                |
 | `Ctrl-b (` / `)`| previous / next session    |
+| `Ctrl-b m`      | session cheat-sheet (new / attach / list) |
 | `Ctrl-b [`      | enter copy-mode (scrollback) |
 | `Ctrl-b ]`      | paste the paste buffer     |
 | `Ctrl-b :`      | command prompt             |
@@ -145,11 +167,17 @@ exits, `Esc` or `q` exits.
 set prefix C-a
 set history-limit 5000
 set default-shell /bin/bash
+set escape-time 25
 set status-fg 0
 set status-bg 4
 bind s split-vertical
 bind v split-horizontal
 ```
+
+`escape-time` is how many milliseconds a lone `Esc` waits for the rest of an
+escape sequence before it is sent on its own (default 25). Raise it on a slow
+link if arrow keys misfire; lower it to `0` if an app inside ngmux feels
+sluggish to react to `Esc`.
 
 Unknown lines are logged and skipped, never fatal.
 
