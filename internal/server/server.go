@@ -168,7 +168,10 @@ func (s *Server) hasSession(name string) bool {
 	return ok
 }
 
-// sessionEmptied is invoked by a session when its last window closes.
+// sessionEmptied is invoked by a session when its last window closes. It drops
+// the session and, under the same lock, moves any client that was viewing it to
+// a surviving session so a burst of sessions emptying together can never leave a
+// client pointed at a name that is already gone.
 func (s *Server) sessionEmptied(name string) {
 	s.mu.Lock()
 	if sess, ok := s.sessions[name]; ok {
@@ -181,28 +184,29 @@ func (s *Server) sessionEmptied(name string) {
 		}
 		sess.shutdown()
 	}
-	affected := make([]*client, 0)
-	for c := range s.clients {
-		if c.session() == name {
-			affected = append(affected, c)
+
+	// Pick a surviving session to move orphaned clients onto. Walk s.order
+	// rather than trusting s.order[0] so a stale entry can't be handed out.
+	fallback := ""
+	for _, n := range s.order {
+		if _, ok := s.sessions[n]; ok {
+			fallback = n
+			break
 		}
 	}
-	last := len(s.sessions) == 0
-	// Reassign still-connected clients to another session if one exists.
-	var fallback string
-	if !last && len(s.order) > 0 {
-		fallback = s.order[0]
-	}
-	s.mu.Unlock()
-
-	if last {
+	if fallback == "" {
+		s.mu.Unlock()
 		s.quit()
 		return
 	}
-	for _, c := range affected {
-		c.setSession(fallback)
-		c.reset()
+
+	for c := range s.clients {
+		if c.session() == name {
+			c.setSession(fallback)
+			c.reset()
+		}
 	}
+	s.mu.Unlock()
 }
 
 func (s *Server) acceptLoop() {

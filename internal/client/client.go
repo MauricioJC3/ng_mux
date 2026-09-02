@@ -30,18 +30,25 @@ type inReader struct {
 	ch   chan byte
 	back int // one byte of pushback, or -1
 
+	stop     chan struct{} // closed by close() to release the reader goroutine
+	stopOnce sync.Once
+
 	mu  sync.Mutex
 	err error
 }
 
 func newInReader(r io.Reader) *inReader {
-	ir := &inReader{ch: make(chan byte, 4096), back: -1}
+	ir := &inReader{ch: make(chan byte, 4096), back: -1, stop: make(chan struct{})}
 	go func() {
 		buf := make([]byte, 4096)
 		for {
 			n, err := r.Read(buf)
 			for _, b := range buf[:n] {
-				ir.ch <- b
+				select {
+				case ir.ch <- b:
+				case <-ir.stop:
+					return
+				}
 			}
 			if err != nil {
 				ir.mu.Lock()
@@ -54,6 +61,12 @@ func newInReader(r io.Reader) *inReader {
 	}()
 	return ir
 }
+
+// close releases anything blocked on the reader: the pump goroutine stuck on a
+// full channel, and a ReadByte waiting for the next key. Safe to call more than
+// once. It does not unblock an in-progress os.Stdin read; that ends with the
+// process.
+func (ir *inReader) close() { ir.stopOnce.Do(func() { close(ir.stop) }) }
 
 func (ir *inReader) readErr() error {
 	ir.mu.Lock()
@@ -71,11 +84,15 @@ func (ir *inReader) ReadByte() (byte, error) {
 		ir.back = -1
 		return b, nil
 	}
-	b, ok := <-ir.ch
-	if !ok {
+	select {
+	case b, ok := <-ir.ch:
+		if !ok {
+			return 0, ir.readErr()
+		}
+		return b, nil
+	case <-ir.stop:
 		return 0, ir.readErr()
 	}
-	return b, nil
 }
 
 // pushBack returns one byte to the stream for the next ReadByte. Only the most
@@ -114,6 +131,8 @@ func (ir *inReader) ReadByteTimeout(d time.Duration) (b byte, ok bool) {
 	case b, chOK := <-ir.ch:
 		return b, chOK
 	case <-timer.C:
+		return 0, false
+	case <-ir.stop:
 		return 0, false
 	}
 }
@@ -210,9 +229,12 @@ func Attach(ep ipc.Endpoint, session string, in, out *os.File) error {
 		pc.Write(protocol.Message{Type: protocol.TypeResize, Cols: s.Cols, Rows: s.Rows})
 	}, stopResize)
 
-	// Input goroutine: stdin -> server. Ends when stdin errors.
+	// Input goroutine: stdin -> server. Ends when stdin errors or, on teardown,
+	// when ir.close() releases it.
+	ir := newInReader(in)
+	defer ir.close()
 	inputErr := make(chan error, 1)
-	go func() { inputErr <- forwardInput(newInReader(in), w, out, pc, km, escapeDelay, &overlay) }()
+	go func() { inputErr <- forwardInput(ir, w, out, pc, km, escapeDelay, &overlay) }()
 
 	// Main goroutine: server -> stdout, until Bye or disconnect.
 	readErr := readFrames(pc, w, &overlay)

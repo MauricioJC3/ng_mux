@@ -38,6 +38,21 @@ func TestReapDropsAnExitedPane(t *testing.T) {
 	}
 }
 
+// TestKillPaneClosesTheActivePane covers the kill-pane command: closing the pty
+// makes the output pump end and the pane is reaped through the normal path,
+// same as a shell that exits on its own.
+func TestKillPaneClosesTheActivePane(t *testing.T) {
+	srv, _, sess := setupSession(t)
+	exec(t, srv, "split-window -h")
+	if got := paneCount(sess); got != 2 {
+		t.Fatalf("pane count after split = %d, want 2", got)
+	}
+
+	exec(t, srv, "kill-pane")
+
+	waitFor(t, func() bool { return paneCount(sess) == 1 }, 2*time.Second)
+}
+
 func TestLastPaneExitEmptiesSession(t *testing.T) {
 	ff := &fakeFleet{}
 	emptied := make(chan string, 1)

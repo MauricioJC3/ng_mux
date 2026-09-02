@@ -48,7 +48,6 @@ type pane struct {
 	pt   pty
 	vt   screen
 	copy *copyState
-	dead bool
 }
 
 // startPane opens a pty running shell (empty = platform default) and wires an

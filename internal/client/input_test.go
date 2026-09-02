@@ -41,6 +41,34 @@ func TestInReaderPushBack(t *testing.T) {
 	}
 }
 
+// close() must release a ReadByte that is parked waiting for input, so the
+// input goroutine unwinds on teardown instead of leaking until stdin closes.
+func TestInReaderCloseUnblocksReadByte(t *testing.T) {
+	pr, _ := io.Pipe() // nothing is ever written, nothing closes it
+	ir := newInReader(pr)
+
+	got := make(chan error, 1)
+	go func() { _, err := ir.ReadByte(); got <- err }()
+
+	select {
+	case <-got:
+		t.Fatal("ReadByte returned before close()")
+	case <-time.After(20 * time.Millisecond):
+	}
+
+	ir.close()
+	ir.close() // idempotent
+
+	select {
+	case err := <-got:
+		if err == nil {
+			t.Fatal("ReadByte after close() should report an error")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("ReadByte did not return after close()")
+	}
+}
+
 func TestReadByteTimeoutFiresWithNoInput(t *testing.T) {
 	pr, _ := io.Pipe()
 	ir := newInReader(pr)

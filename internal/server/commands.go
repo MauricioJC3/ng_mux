@@ -105,7 +105,9 @@ func cmdNewWindow(c *cmdCtx) (string, error) {
 func cmdKillPane(c *cmdCtx) (string, error) {
 	return "", c.sess.withWindow(func(w *window, _, _ int) error {
 		if p := w.panes[w.active]; p != nil {
-			go c.sess.reportExit(p)
+			// Close the pty; the output pump then ends and reports the exit
+			// through the normal reap path, same as a shell that exits itself.
+			p.close()
 		}
 		return nil
 	})
