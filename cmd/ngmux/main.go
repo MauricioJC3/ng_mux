@@ -130,8 +130,27 @@ func sessionFlag(args []string) (string, error) {
 	return *t, nil
 }
 
+// nestGuardEnv is exported into every pane shell by the daemon. Its presence
+// means "this process is already running inside an attached ngmux client".
+const nestGuardEnv = "NGMUX"
+
+// refuseIfNested blocks a second client from being attached from inside a pane.
+// Two clients on the same terminal fight over the prefix key and input, and the
+// original tmux/screen fix is the same: refuse unless the user clears the
+// marker variable to force it.
+func refuseIfNested() error {
+	if os.Getenv(nestGuardEnv) == "" {
+		return nil
+	}
+	return fmt.Errorf("already inside ngmux — nested clients fight over the prefix key and input; " +
+		"detach first with Ctrl-b d, or unset " + nestGuardEnv + " to force")
+}
+
 // cmdNew attaches, starting the daemon first if nothing is listening.
 func cmdNew(ep ipc.Endpoint, args []string) error {
+	if err := refuseIfNested(); err != nil {
+		return err
+	}
 	if err := ptyx.CheckAvailable(); err != nil {
 		return err
 	}
@@ -148,6 +167,9 @@ func cmdNew(ep ipc.Endpoint, args []string) error {
 }
 
 func cmdAttach(ep ipc.Endpoint, args []string) error {
+	if err := refuseIfNested(); err != nil {
+		return err
+	}
 	if err := ptyx.CheckAvailable(); err != nil {
 		return err
 	}
@@ -242,6 +264,10 @@ func startDaemon(ep ipc.Endpoint) error {
 
 // runDaemon is the daemon's main function (the `__server` subcommand).
 func runDaemon(ep ipc.Endpoint) error {
+	// Every pane shell inherits this, so `ngmux` run from inside a pane can
+	// tell it is nested and refuse (see refuseIfNested).
+	_ = os.Setenv(nestGuardEnv, ep.Name)
+
 	logger := log.New(io.Discard, "", 0)
 	if os.Getenv("NGMUX_DEBUG") != "" {
 		logger = log.New(os.Stderr, "ngmuxd ", log.LstdFlags)
