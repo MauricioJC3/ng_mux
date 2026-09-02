@@ -1,4 +1,4 @@
-// Package server is the tmux2 daemon. It owns every session, window, pane, pty
+// Package server is the ngmux daemon. It owns every session, window, pane, pty
 // and emulator, renders frames, and streams ANSI updates to attached clients
 // over the ipc transport. Clients are thin: they send keystrokes and blit bytes.
 package server
@@ -95,7 +95,7 @@ func Run(ep ipc.Endpoint, initCols, initRows int, logger *log.Logger) error {
 	}
 	srv.ln = ln
 
-	// Start with one session so `tmux2 new` has something to attach to.
+	// Start with one session so `ngmux new` has something to attach to.
 	if _, err := srv.getOrCreateSession(defaultSessionName); err != nil {
 		ln.Close()
 		ipc.Remove(ep)

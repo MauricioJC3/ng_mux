@@ -1,13 +1,13 @@
-// Command tmux2 is a small, cross-platform terminal multiplexer: a background
+// Command ngmux is a small, cross-platform terminal multiplexer: a background
 // daemon owns the sessions, windows and panes, thin client processes attach.
 //
 // Usage:
 //
-//	tmux2 [new] [-s name]    start the server if needed, then attach
-//	tmux2 attach|a [-t name] attach to an already-running server
-//	tmux2 ls                 list sessions
-//	tmux2 kill-session -t n  kill one session
-//	tmux2 kill-server        stop the server
+//	ngmux [new] [-s name]    start the server if needed, then attach
+//	ngmux attach|a [-t name] attach to an already-running server
+//	ngmux ls                 list sessions
+//	ngmux kill-session -t n  kill one session
+//	ngmux kill-server        stop the server
 package main
 
 import (
@@ -62,39 +62,39 @@ func main() {
 	case "help", "-h", "--help":
 		usage(os.Stdout)
 	case "version", "-v", "--version":
-		fmt.Println("tmux2 " + versionString())
+		fmt.Println("ngmux " + versionString())
 	case "update", "upgrade":
 		err = selfUpdate(os.Stdout, hasFlag(args, "--force"))
 	case "run":
-		// `tmux2 run <command line...>` — explicit form.
+		// `ngmux run <command line...>` — explicit form.
 		err = client.Exec(ep, strings.Join(args, " "))
 	default:
 		// Anything else is treated as a command line for the running server,
-		// tmux-style: `tmux2 new-window`, `tmux2 send-keys -t 0 "ls" Enter`.
+		// tmux-style: `ngmux new-window`, `ngmux send-keys -t 0 "ls" Enter`.
 		err = client.Exec(ep, strings.Join(os.Args[1:], " "))
 	}
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "tmux2: %v\n", err)
+		fmt.Fprintf(os.Stderr, "ngmux: %v\n", err)
 		os.Exit(1)
 	}
 }
 
 func usage(w io.Writer) {
-	fmt.Fprint(w, `tmux2 - cross-platform terminal multiplexer
+	fmt.Fprint(w, `ngmux - cross-platform terminal multiplexer
 
-  tmux2 [new] [-s name]      start the server if needed, then attach
-  tmux2 attach|a [-t name]   attach to a running server
-  tmux2 ls                   list sessions
-  tmux2 kill-session -t name kill one session
-  tmux2 kill-server          stop the server
-  tmux2 update               download and install the latest release
-  tmux2 version              print the version
-  tmux2 <command> [args...]  run a command on the running server, e.g.
-                             tmux2 new-window
-                             tmux2 send-keys -t 0 "ls -la" Enter
-                             tmux2 select-layout tiled
-                             tmux2 rename-window build
+  ngmux [new] [-s name]      start the server if needed, then attach
+  ngmux attach|a [-t name]   attach to a running server
+  ngmux ls                   list sessions
+  ngmux kill-session -t name kill one session
+  ngmux kill-server          stop the server
+  ngmux update               download and install the latest release
+  ngmux version              print the version
+  ngmux <command> [args...]  run a command on the running server, e.g.
+                             ngmux new-window
+                             ngmux send-keys -t 0 "ls -la" Enter
+                             ngmux select-layout tiled
+                             ngmux rename-window build
 
 prefix key: Ctrl-b
   "  split top/bottom      %  split left/right       x  kill pane
@@ -109,7 +109,7 @@ prefix key: Ctrl-b
 // flags parses a -s/-t "session name" option (both spellings mean the same
 // thing) out of args and returns the name (may be empty).
 func sessionFlag(args []string) (string, error) {
-	fs := flag.NewFlagSet("tmux2", flag.ContinueOnError)
+	fs := flag.NewFlagSet("ngmux", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	s := fs.String("s", "", "session name")
 	t := fs.String("t", "", "target session name")
@@ -142,7 +142,7 @@ func cmdAttach(ep ipc.Endpoint, args []string) error {
 		return err
 	}
 	if _, err := ipc.Dial(ep); err != nil {
-		return fmt.Errorf("no server running (use `tmux2 new`)")
+		return fmt.Errorf("no server running (use `ngmux new`)")
 	}
 	return client.Attach(ep, name, os.Stdin, os.Stdout)
 }
@@ -229,8 +229,8 @@ func startDaemon(ep ipc.Endpoint) error {
 // runDaemon is the daemon's main function (the `__server` subcommand).
 func runDaemon(ep ipc.Endpoint) error {
 	logger := log.New(io.Discard, "", 0)
-	if os.Getenv("TMUX2_DEBUG") != "" {
-		logger = log.New(os.Stderr, "tmux2d ", log.LstdFlags)
+	if os.Getenv("NGMUX_DEBUG") != "" {
+		logger = log.New(os.Stderr, "ngmuxd ", log.LstdFlags)
 	}
 	return server.Run(ep, 80, 24, logger)
 }

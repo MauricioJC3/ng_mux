@@ -1,4 +1,4 @@
-# tmux2
+# ngmux
 
 A small, cross-platform terminal multiplexer written in pure Go. Runs on Linux,
 macOS and Windows 10+ from the same codebase.
@@ -12,17 +12,17 @@ just kills the client — the daemon and your shells keep running.
 
 Working now:
 
-- background daemon, auto-spawned on first `tmux2`
+- background daemon, auto-spawned on first `ngmux`
 - **multiple sessions**, each with **multiple windows**, each a tree of panes
 - split a pane left/right or top/bottom; **resize panes** with the keyboard
 - move focus between panes; cycle / select / kill windows
 - switch between sessions while attached
-- named sessions: `tmux2 new -s work`, `tmux2 attach -t work`
+- named sessions: `ngmux new -s work`, `ngmux attach -t work`
 - **scrollback + copy-mode**: scroll history, select text, yank to a paste
   buffer, paste it back
-- **config file** (`~/.config/tmux2/tmux2.conf`): custom prefix key, key
+- **config file** (`~/.config/ngmux/ngmux.conf`): custom prefix key, key
   bindings, history limit, default shell, status-bar colours
-- **command layer**: `tmux2 <command> [args]` scripts the running server
+- **command layer**: `ngmux <command> [args]` scripts the running server
   (`new-window`, `split-window -h`, `send-keys`, `select-layout`, `rename-*`, …),
   and `Ctrl-b :` opens the same commands as an in-terminal prompt
 - **preset layouts**: `select-layout even-horizontal | even-vertical | tiled |
@@ -33,7 +33,7 @@ Working now:
   the `[+]` button in the status bar
 - status bar: session name, window list with the active marker, clock
 - kill a pane; detach and re-attach
-- `tmux2 ls`, `tmux2 kill-session -t name`, `tmux2 kill-server`
+- `ngmux ls`, `ngmux kill-session -t name`, `ngmux kill-server`
 - cross-platform PTY (ConPTY on Windows) and IPC (Unix socket / named pipe)
 
 Deliberately out of scope: hooks, session groups, `choose-tree`,
@@ -41,7 +41,7 @@ system-clipboard integration.
 
 ### Scrollback caveat
 
-vt10x keeps no history of its own, so tmux2 reconstructs scrollback by feeding
+vt10x keeps no history of its own, so ngmux reconstructs scrollback by feeding
 the emulator line by line and detecting when the screen scrolls. This is
 reliable for shell output; capture is skipped entirely while a full-screen app
 (vim, less, htop) holds the alternate screen, matching tmux.
@@ -54,7 +54,7 @@ reliable for shell output; capture is skipped entirely while a full-screen app
 curl -fsSL https://raw.githubusercontent.com/MauricioJC3/ng_mux/main/install.sh | sh
 ```
 
-It drops the `tmux2` binary in `~/.local/bin` (override with `TMUX2_INSTALL_DIR`)
+It drops the `ngmux` binary in `~/.local/bin` (override with `NGMUX_INSTALL_DIR`)
 and adds that directory to your shell's `PATH` if it is missing.
 
 **Windows** — from any shell (cmd, PowerShell, Nushell, Git Bash):
@@ -64,44 +64,44 @@ powershell -c "irm https://raw.githubusercontent.com/MauricioJC3/ng_mux/main/ins
 ```
 
 Already in a PowerShell prompt? `irm …/install.ps1 | iex` on its own works too.
-Prefer a package? `go install github.com/MauricioJC3/ng_mux/cmd/tmux2@latest`
-(needs Go 1.27+) drops `tmux2.exe` in `~\go\bin`.
+Prefer a package? `go install github.com/MauricioJC3/ng_mux/cmd/ngmux@latest`
+(needs Go 1.27+) drops `ngmux.exe` in `~\go\bin`.
 
 **Update** to the latest release at any time:
 
 ```sh
-tmux2 update
+ngmux update
 ```
 
-`tmux2 version` prints the installed version.
+`ngmux version` prints the installed version.
 
 ### Build from source
 
 ```sh
-go install github.com/MauricioJC3/ng_mux/cmd/tmux2@latest   # needs Go 1.27+
+go install github.com/MauricioJC3/ng_mux/cmd/ngmux@latest   # needs Go 1.27+
 # or, from a clone:
-go build -o tmux2 ./cmd/tmux2       # native
-GOOS=windows go build ./cmd/tmux2   # Windows binary
+go build -o ngmux ./cmd/ngmux       # native
+GOOS=windows go build ./cmd/ngmux   # Windows binary
 ```
 
 ## Use
 
 ```
-tmux2 [new] [-s name]      start the server if needed, then attach
-tmux2 attach | a [-t name] attach to a running server
-tmux2 ls                   list sessions
-tmux2 kill-session -t name kill one session
-tmux2 kill-server          stop the server
-tmux2 update               install the latest release
-tmux2 version              print the installed version
-tmux2 <command> [args]     run a command on the running server:
-  tmux2 new-window
-  tmux2 split-window -h
-  tmux2 send-keys -t work "make test" Enter
-  tmux2 select-layout tiled
-  tmux2 rename-window build
-  tmux2 rename-session prod
-  tmux2 list-windows
+ngmux [new] [-s name]      start the server if needed, then attach
+ngmux attach | a [-t name] attach to a running server
+ngmux ls                   list sessions
+ngmux kill-session -t name kill one session
+ngmux kill-server          stop the server
+ngmux update               install the latest release
+ngmux version              print the installed version
+ngmux <command> [args]     run a command on the running server:
+  ngmux new-window
+  ngmux split-window -h
+  ngmux send-keys -t work "make test" Enter
+  ngmux select-layout tiled
+  ngmux rename-window build
+  ngmux rename-session prod
+  ngmux list-windows
 ```
 
 Targets: `-t <session>`, `-t <session>:<window>`, `-t <session>:<window>.<pane>`
@@ -138,8 +138,8 @@ exits, `Esc` or `q` exits.
 
 ### Config file
 
-`~/.config/tmux2/tmux2.conf` (or `%APPDATA%\tmux2\tmux2.conf`; override with
-`TMUX2_CONFIG`). One directive per line:
+`~/.config/ngmux/ngmux.conf` (or `%APPDATA%\ngmux\ngmux.conf`; override with
+`NGMUX_CONFIG`). One directive per line:
 
 ```
 set prefix C-a
@@ -156,11 +156,11 @@ Unknown lines are logged and skipped, never fatal.
 ## Architecture
 
 ```
-cmd/tmux2            CLI + daemon spawn (build-tagged per OS)
+cmd/ngmux            CLI + daemon spawn (build-tagged per OS)
 internal/
   protocol          length-prefixed JSON framing, client<->server messages
   ipc               transport: Unix domain socket / Windows named pipe
-  config            tmux2.conf parser (prefix, binds, limits, colours)
+  config            ngmux.conf parser (prefix, binds, limits, colours)
   ptyx              pseudo-terminal wrapper (aymanbagabas/go-pty)
   vterm             VT100/xterm emulator wrapper (hinshun/vt10x) + scrollback
   layout            binary split tree -> pane rectangles; split / remove / resize

@@ -1,7 +1,7 @@
 //go:build !windows
 
 // Package e2e exercises the daemon and client together over a real pty, the
-// same way an interactive terminal would drive tmux2.
+// same way an interactive terminal would drive ngmux.
 package e2e
 
 import (
@@ -338,13 +338,13 @@ func TestCopyModeShowsScrollback(t *testing.T) {
 
 func TestConfigOverridesPrefix(t *testing.T) {
 	confDir := t.TempDir()
-	confPath := filepath.Join(confDir, "tmux2.conf")
+	confPath := filepath.Join(confDir, "ngmux.conf")
 	if err := os.WriteFile(confPath, []byte("set prefix C-a\nset history-limit 500\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("TMUX2_CONFIG", confPath)
+	t.Setenv("NGMUX_CONFIG", confPath)
 
-	h := newHarness(t) // server + client both read TMUX2_CONFIG
+	h := newHarness(t) // server + client both read NGMUX_CONFIG
 	time.Sleep(300 * time.Millisecond)
 
 	h.send("printf CFG_AAA\r")

@@ -9,7 +9,7 @@ import (
 )
 
 // execCommand parses and runs one free-form command line, the shared path for
-// key bindings, the ':' prompt and the `tmux2 <command>` CLI. cl is the issuing
+// key bindings, the ':' prompt and the `ngmux <command>` CLI. cl is the issuing
 // client, or nil for a one-shot CLI connection. It looks the command up in the
 // registry, resolves the -t target, runs the handler, and forces a repaint. It
 // returns text to show the caller (often empty).

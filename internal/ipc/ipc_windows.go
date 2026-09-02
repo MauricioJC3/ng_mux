@@ -22,7 +22,7 @@ func pipeName(e Endpoint) string {
 		user = "user"
 	}
 	user = strings.NewReplacer("\\", "_", "/", "_", " ", "_").Replace(user)
-	return fmt.Sprintf(`\\.\pipe\tmux2-%s-%s`, user, e.Name)
+	return fmt.Sprintf(`\\.\pipe\ngmux-%s-%s`, user, e.Name)
 }
 
 // Listen creates the server pipe.

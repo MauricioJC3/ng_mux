@@ -67,7 +67,7 @@ func selfUpdate(out io.Writer, force bool) error {
 		return nil
 	}
 
-	assetName := fmt.Sprintf("tmux2_%s_%s", runtime.GOOS, runtime.GOARCH)
+	assetName := fmt.Sprintf("ngmux_%s_%s", runtime.GOOS, runtime.GOARCH)
 	if runtime.GOOS == "windows" {
 		assetName += ".exe"
 	}
@@ -106,7 +106,7 @@ func selfUpdate(out io.Writer, force bool) error {
 	if err := replaceExecutable(exe, blob); err != nil {
 		return err
 	}
-	fmt.Fprintf(out, "updated to %s — restart any running tmux2 clients\n", rel.TagName)
+	fmt.Fprintf(out, "updated to %s — restart any running ngmux clients\n", rel.TagName)
 	return nil
 }
 
@@ -178,7 +178,7 @@ func expectedSum(rel *ghRelease, assetName string) (string, error) {
 // a running executable cannot be replaced directly.
 func replaceExecutable(exe string, blob []byte) error {
 	dir := filepath.Dir(exe)
-	tmp, err := os.CreateTemp(dir, ".tmux2-update-*")
+	tmp, err := os.CreateTemp(dir, ".ngmux-update-*")
 	if err != nil {
 		return fmt.Errorf("cannot write to %s (try re-running the install script, or with sudo): %w", dir, err)
 	}

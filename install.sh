@@ -1,18 +1,18 @@
 #!/bin/sh
-# tmux2 installer — downloads the latest prebuilt binary from GitHub Releases,
+# ngmux installer — downloads the latest prebuilt binary from GitHub Releases,
 # drops it in an install dir, and makes sure that dir is on your PATH.
 #
 #   curl -fsSL https://raw.githubusercontent.com/MauricioJC3/ng_mux/main/install.sh | sh
 #
 # Environment overrides:
-#   TMUX2_INSTALL_DIR   where to put the binary   (default: ~/.local/bin)
-#   TMUX2_VERSION       tag to install            (default: latest release)
-#   TMUX2_NO_MODIFY_PATH set to 1 to skip editing your shell rc file
+#   NGMUX_INSTALL_DIR   where to put the binary   (default: ~/.local/bin)
+#   NGMUX_VERSION       tag to install            (default: latest release)
+#   NGMUX_NO_MODIFY_PATH set to 1 to skip editing your shell rc file
 set -eu
 
 REPO="MauricioJC3/ng_mux"
-BIN="tmux2"
-INSTALL_DIR="${TMUX2_INSTALL_DIR:-$HOME/.local/bin}"
+BIN="ngmux"
+INSTALL_DIR="${NGMUX_INSTALL_DIR:-$HOME/.local/bin}"
 
 say()  { printf '%s\n' "$*"; }
 err()  { printf 'install: %s\n' "$*" >&2; exit 1; }
@@ -46,7 +46,7 @@ case "$arch" in
 esac
 
 # --- resolve version -------------------------------------------------------- -
-tag="${TMUX2_VERSION:-}"
+tag="${NGMUX_VERSION:-}"
 if [ -z "$tag" ]; then
 	tag=$(fetch "https://api.github.com/repos/$REPO/releases/latest" - \
 		| grep '"tag_name"' | head -1 | cut -d'"' -f4)
@@ -56,7 +56,7 @@ fi
 asset="${BIN}_${os}_${arch}"
 url="https://github.com/$REPO/releases/download/$tag/$asset"
 
-say "tmux2 $tag  ($os/$arch)"
+say "ngmux $tag  ($os/$arch)"
 say "  -> $INSTALL_DIR/$BIN"
 
 # --- download + verify ----------------------------------------------------- -
@@ -93,10 +93,10 @@ case ":$PATH:" in
 			fish) rc="$HOME/.config/fish/config.fish"
 			      line="fish_add_path $INSTALL_DIR" ;;
 		esac
-		if [ -n "$rc" ] && [ "${TMUX2_NO_MODIFY_PATH:-0}" != "1" ]; then
+		if [ -n "$rc" ] && [ "${NGMUX_NO_MODIFY_PATH:-0}" != "1" ]; then
 			mkdir -p "$(dirname "$rc")"
 			if ! grep -qF "$INSTALL_DIR" "$rc" 2>/dev/null; then
-				printf '\n# added by the tmux2 installer\n%s\n' "$line" >> "$rc"
+				printf '\n# added by the ngmux installer\n%s\n' "$line" >> "$rc"
 				say ""
 				say "Added $INSTALL_DIR to your PATH in $rc"
 				say "Open a new terminal (or: source $rc) then run: $BIN"

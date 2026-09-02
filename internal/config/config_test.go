@@ -8,7 +8,7 @@ import (
 
 func writeConf(t *testing.T, body string) string {
 	t.Helper()
-	p := filepath.Join(t.TempDir(), "tmux2.conf")
+	p := filepath.Join(t.TempDir(), "ngmux.conf")
 	if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}

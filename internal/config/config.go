@@ -1,4 +1,4 @@
-// Package config loads tmux2's optional configuration file. The format is one
+// Package config loads ngmux's optional configuration file. The format is one
 // directive per line, '#' starts a comment:
 //
 //	set prefix C-a
@@ -54,19 +54,19 @@ func Default() Config {
 	}
 }
 
-// Path returns the location config is read from, honouring TMUX2_CONFIG then
+// Path returns the location config is read from, honouring NGMUX_CONFIG then
 // the per-OS user config directory.
 func Path() string {
-	if p := os.Getenv("TMUX2_CONFIG"); p != "" {
+	if p := os.Getenv("NGMUX_CONFIG"); p != "" {
 		return p
 	}
 	if dir, err := os.UserConfigDir(); err == nil {
-		return filepath.Join(dir, "tmux2", "tmux2.conf")
+		return filepath.Join(dir, "ngmux", "ngmux.conf")
 	}
 	if runtime.GOOS == "windows" {
-		return filepath.Join(os.Getenv("APPDATA"), "tmux2", "tmux2.conf")
+		return filepath.Join(os.Getenv("APPDATA"), "ngmux", "ngmux.conf")
 	}
-	return filepath.Join(os.Getenv("HOME"), ".config", "tmux2", "tmux2.conf")
+	return filepath.Join(os.Getenv("HOME"), ".config", "ngmux", "ngmux.conf")
 }
 
 // Load reads and parses Path(). A missing file is not an error: it returns the

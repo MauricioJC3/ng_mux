@@ -1,4 +1,4 @@
-// Package protocol defines the wire format between the tmux2 client and server.
+// Package protocol defines the wire format between the ngmux client and server.
 //
 // Frames are length-prefixed JSON: a 4-byte big-endian uint32 length header
 // followed by that many bytes of JSON-encoded Message. This is deliberately

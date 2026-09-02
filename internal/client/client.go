@@ -1,4 +1,4 @@
-// Package client is the thin half of tmux2. It connects to the daemon, puts
+// Package client is the thin half of ngmux. It connects to the daemon, puts
 // the real terminal into raw mode, forwards keystrokes (intercepting the
 // prefix key for multiplexer commands), and writes the ANSI frames the server
 // sends straight to stdout.
@@ -125,7 +125,7 @@ func Attach(ep ipc.Endpoint, session string, in, out *os.File) error {
 var errDetached = errors.New("detached")
 
 // Exec sends a one-shot command line to the daemon and prints its reply. It
-// does not attach. Used by the `tmux2 <command>` CLI form.
+// does not attach. Used by the `ngmux <command>` CLI form.
 func Exec(ep ipc.Endpoint, line string) error {
 	conn, err := ipc.Dial(ep)
 	if err != nil {
@@ -412,7 +412,7 @@ var defaultKeyCommands = map[byte]string{
 	'd': cmdDetach,
 }
 
-// legacyBindCommands translates the short command names older tmux2.conf files
+// legacyBindCommands translates the short command names older ngmux.conf files
 // use in `bind` directives into current command lines. A bind value that is not
 // listed here is passed through unchanged, so a new config can bind a full
 // command line directly (e.g. `bind S split-window -v`).

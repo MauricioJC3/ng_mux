@@ -1,16 +1,16 @@
-# tmux2 installer for Windows — downloads the latest prebuilt binary from
+# ngmux installer for Windows — downloads the latest prebuilt binary from
 # GitHub Releases and puts it on your user PATH.
 #
 #   irm https://raw.githubusercontent.com/MauricioJC3/ng_mux/main/install.ps1 | iex
 #
 # Environment overrides:
-#   $env:TMUX2_INSTALL_DIR   where to put tmux2.exe  (default: %LOCALAPPDATA%\Programs\tmux2)
-#   $env:TMUX2_VERSION       tag to install          (default: latest release)
+#   $env:NGMUX_INSTALL_DIR   where to put ngmux.exe  (default: %LOCALAPPDATA%\Programs\ngmux)
+#   $env:NGMUX_VERSION       tag to install          (default: latest release)
 
 $ErrorActionPreference = 'Stop'
 
 $repo = 'MauricioJC3/ng_mux'
-$installDir = if ($env:TMUX2_INSTALL_DIR) { $env:TMUX2_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA 'Programs\tmux2' }
+$installDir = if ($env:NGMUX_INSTALL_DIR) { $env:NGMUX_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA 'Programs\ngmux' }
 
 $arch = switch ($env:PROCESSOR_ARCHITECTURE) {
 	'AMD64' { 'amd64' }
@@ -18,21 +18,21 @@ $arch = switch ($env:PROCESSOR_ARCHITECTURE) {
 	default { throw "unsupported architecture: $($env:PROCESSOR_ARCHITECTURE)" }
 }
 
-$tag = $env:TMUX2_VERSION
+$tag = $env:NGMUX_VERSION
 if (-not $tag) {
 	$rel = Invoke-RestMethod "https://api.github.com/repos/$repo/releases/latest"
 	$tag = $rel.tag_name
 }
 if (-not $tag) { throw "could not determine the latest release (is one published yet?)" }
 
-$asset = "tmux2_windows_${arch}.exe"
+$asset = "ngmux_windows_${arch}.exe"
 $url   = "https://github.com/$repo/releases/download/$tag/$asset"
 
-Write-Host "tmux2 $tag  (windows/$arch)"
-Write-Host "  -> $installDir\tmux2.exe"
+Write-Host "ngmux $tag  (windows/$arch)"
+Write-Host "  -> $installDir\ngmux.exe"
 
 New-Item -ItemType Directory -Force -Path $installDir | Out-Null
-$dest = Join-Path $installDir 'tmux2.exe'
+$dest = Join-Path $installDir 'ngmux.exe'
 $tmp  = "$dest.new"
 Invoke-WebRequest -Uri $url -OutFile $tmp
 
@@ -55,8 +55,8 @@ if (($userPath -split ';') -notcontains $installDir) {
 	[Environment]::SetEnvironmentVariable('Path', "$userPath;$installDir", 'User')
 	$env:Path = "$env:Path;$installDir"
 	Write-Host ""
-	Write-Host "Added $installDir to your user PATH. Open a new terminal, then run: tmux2"
+	Write-Host "Added $installDir to your user PATH. Open a new terminal, then run: ngmux"
 } else {
 	Write-Host ""
-	Write-Host "Installed. Run: tmux2"
+	Write-Host "Installed. Run: ngmux"
 }

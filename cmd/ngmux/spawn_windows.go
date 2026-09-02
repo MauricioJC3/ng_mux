@@ -12,7 +12,7 @@ import (
 	"github.com/MauricioJC3/ng_mux/internal/ipc"
 )
 
-// spawnDaemon starts `tmux2 __server <name>` as a detached, windowless
+// spawnDaemon starts `ngmux __server <name>` as a detached, windowless
 // background process that outlives this client.
 func spawnDaemon(ep ipc.Endpoint) error {
 	self, err := os.Executable()

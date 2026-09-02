@@ -18,7 +18,7 @@ func socketDir() (string, error) {
 	if base == "" {
 		base = os.TempDir()
 	}
-	dir := filepath.Join(base, "tmux2-"+strconv.Itoa(os.Getuid()))
+	dir := filepath.Join(base, "ngmux-"+strconv.Itoa(os.Getuid()))
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", err
 	}

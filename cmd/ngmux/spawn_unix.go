@@ -11,7 +11,7 @@ import (
 	"github.com/MauricioJC3/ng_mux/internal/ipc"
 )
 
-// spawnDaemon starts `tmux2 __server <name>` in its own session, fully
+// spawnDaemon starts `ngmux __server <name>` in its own session, fully
 // detached from this process's controlling terminal and process group so it
 // survives the client exiting.
 func spawnDaemon(ep ipc.Endpoint) error {

@@ -10,7 +10,7 @@ import (
 
 // command is one entry in the command layer: a canonical name, optional tmux
 // short aliases, and a handler. Every way to drive the multiplexer — key
-// bindings, the ':' prompt, and the `tmux2 <cmd>` CLI — funnels through this
+// bindings, the ':' prompt, and the `ngmux <cmd>` CLI — funnels through this
 // table, so adding a command touches exactly one place.
 type command struct {
 	name    string

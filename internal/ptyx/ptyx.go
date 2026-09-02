@@ -1,7 +1,7 @@
 // Package ptyx is a thin wrapper over github.com/aymanbagabas/go-pty. It opens
 // a pseudo-terminal, starts a child process attached to it, and exposes the
 // master end as an io.ReadWriteCloser plus a Resize method. The point of the
-// wrapper is to keep the rest of tmux2 free of any direct pty/ConPTY concern
+// wrapper is to keep the rest of ngmux free of any direct pty/ConPTY concern
 // and to centralise the "what shell do we launch" decision.
 package ptyx
 
