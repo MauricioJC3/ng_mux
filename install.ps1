@@ -1,16 +1,31 @@
 # ngmux installer for Windows — downloads the latest prebuilt binary from
-# GitHub Releases and puts it on your user PATH.
+# GitHub Releases and puts it on your PATH.
 #
 #   irm https://raw.githubusercontent.com/MauricioJC3/ng_mux/main/install.ps1 | iex
 #
+# Run elevated (Administrator) to install for every user under
+# %ProgramFiles%\ngmux and the system PATH; otherwise it installs just for you
+# under %LOCALAPPDATA%\Programs\ngmux and your user PATH.
+#
 # Environment overrides:
-#   $env:NGMUX_INSTALL_DIR   where to put ngmux.exe  (default: %LOCALAPPDATA%\Programs\ngmux)
+#   $env:NGMUX_INSTALL_DIR   where to put ngmux.exe
 #   $env:NGMUX_VERSION       tag to install          (default: latest release)
 
 $ErrorActionPreference = 'Stop'
 
 $repo = 'MauricioJC3/ng_mux'
-$installDir = if ($env:NGMUX_INSTALL_DIR) { $env:NGMUX_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA 'Programs\ngmux' }
+
+$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
+	).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+$pathScope = if ($isAdmin) { 'Machine' } else { 'User' }
+
+if ($env:NGMUX_INSTALL_DIR) {
+	$installDir = $env:NGMUX_INSTALL_DIR
+} elseif ($isAdmin) {
+	$installDir = Join-Path $env:ProgramFiles 'ngmux'
+} else {
+	$installDir = Join-Path $env:LOCALAPPDATA 'Programs\ngmux'
+}
 
 $arch = switch ($env:PROCESSOR_ARCHITECTURE) {
 	'AMD64' { 'amd64' }
@@ -50,7 +65,8 @@ try {
 
 Move-Item -Force $tmp $dest
 
-# --- Put the install dir on the user PATH (idempotent, case/backslash tolerant) ---
+# --- Put the install dir on PATH (system scope when elevated, else user) ---
+# Idempotent and tolerant of casing / a trailing backslash.
 function Test-DirOnPath([string]$dir, [string]$scope) {
 	$cur = [Environment]::GetEnvironmentVariable('Path', $scope)
 	if (-not $cur) { return $false }
@@ -61,16 +77,35 @@ function Test-DirOnPath([string]$dir, [string]$scope) {
 	return $false
 }
 
-$onUserPath = Test-DirOnPath $installDir 'User'
-if (-not $onUserPath) {
-	$cur = [Environment]::GetEnvironmentVariable('Path', 'User')
+function Remove-DirFromPath([string]$dir, [string]$scope) {
+	$cur = [Environment]::GetEnvironmentVariable('Path', $scope)
+	if (-not $cur) { return }
+	$want = $dir.TrimEnd('\').ToLowerInvariant()
+	$kept = @($cur -split ';' | Where-Object { $_ -and $_.TrimEnd('\').ToLowerInvariant() -ne $want })
+	$next = ($kept -join ';')
+	if ($next -ne $cur) { [Environment]::SetEnvironmentVariable('Path', $next, $scope) }
+}
+
+$scopeLabel = if ($pathScope -eq 'Machine') { 'system' } else { 'user' }
+if (-not (Test-DirOnPath $installDir $pathScope)) {
+	$cur = [Environment]::GetEnvironmentVariable('Path', $pathScope)
 	$new = if ($cur) { $cur.TrimEnd(';') + ';' + $installDir } else { $installDir }
-	[Environment]::SetEnvironmentVariable('Path', $new, 'User')
+	[Environment]::SetEnvironmentVariable('Path', $new, $pathScope)
 	Write-Host ""
-	Write-Host "Added $installDir to your user PATH."
+	Write-Host "Added $installDir to the $scopeLabel PATH."
 } else {
 	Write-Host ""
-	Write-Host "$installDir is already on your user PATH."
+	Write-Host "$installDir is already on the $scopeLabel PATH."
+}
+
+# A system install supersedes an earlier per-user one at the default location:
+# drop that stale user PATH entry so an old copy can't shadow this one.
+if ($pathScope -eq 'Machine') {
+	$oldUserDir = Join-Path $env:LOCALAPPDATA 'Programs\ngmux'
+	if ($oldUserDir -ne $installDir -and (Test-DirOnPath $oldUserDir 'User')) {
+		Remove-DirFromPath $oldUserDir 'User'
+		Write-Host "Removed the old per-user entry $oldUserDir from your user PATH."
+	}
 }
 
 # Make it usable in this session immediately.
@@ -99,14 +134,19 @@ foreach ($pf in @($PROFILE.CurrentUserAllHosts, $PROFILE.CurrentUserCurrentHost)
 		$profileHijacksPath = $true
 	}
 }
-if ($profileHijacksPath) {
-	Write-Host "Note: your PowerShell profile sets `$env:Path directly, which can hide ngmux."
-	Write-Host "      Either change that line to append (`$env:Path += ...), or add this once:"
+Write-Host "Done. Open a NEW terminal window and run:  ngmux"
+Write-Host "(works in this session already)"
+if (-not $isAdmin) {
 	Write-Host ""
-	Write-Host "        'function ngmux { & `"$dest`" @args }' | Add-Content `$PROFILE"
-	Write-Host ""
-} else {
-	Write-Host "Done. Open a NEW terminal and run:  ngmux"
-	Write-Host "(this session too:  ngmux)"
+	Write-Host "Tip: re-run this elevated (Administrator) to install for all users"
+	Write-Host "     under Program Files and the system PATH instead."
 }
+if ($profileHijacksPath) {
+	Write-Host ""
+	Write-Host "Note: your PowerShell profile sets `$env:Path directly, which can hide ngmux"
+	Write-Host "even once it is on PATH. Change that line to append (`$env:Path += ...),"
+	Write-Host "or add a function once:"
+	Write-Host "  'function ngmux { & `"$dest`" @args }' | Add-Content `$PROFILE"
+}
+Write-Host ""
 Write-Host "Full path, always works:  $dest"
