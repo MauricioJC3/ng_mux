@@ -8,11 +8,11 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/inre/tmux2/internal/layout"
-	"github.com/inre/tmux2/internal/protocol"
-	"github.com/inre/tmux2/internal/ptyx"
-	"github.com/inre/tmux2/internal/render"
-	"github.com/inre/tmux2/internal/vterm"
+	"github.com/MauricioJC3/ng_mux/internal/layout"
+	"github.com/MauricioJC3/ng_mux/internal/protocol"
+	"github.com/MauricioJC3/ng_mux/internal/ptyx"
+	"github.com/MauricioJC3/ng_mux/internal/render"
+	"github.com/MauricioJC3/ng_mux/internal/vterm"
 )
 
 // sessionOpts carries the configuration a session needs at creation time.

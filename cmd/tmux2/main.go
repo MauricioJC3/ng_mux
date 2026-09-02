@@ -19,11 +19,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/inre/tmux2/internal/client"
-	"github.com/inre/tmux2/internal/ipc"
-	"github.com/inre/tmux2/internal/protocol"
-	"github.com/inre/tmux2/internal/server"
+	"github.com/MauricioJC3/ng_mux/internal/client"
+	"github.com/MauricioJC3/ng_mux/internal/ipc"
+	"github.com/MauricioJC3/ng_mux/internal/protocol"
+	"github.com/MauricioJC3/ng_mux/internal/server"
 )
+
+// version is the build version. Release builds set it via
+// -ldflags "-X main.version=vX.Y.Z"; a plain `go build` leaves it "dev" and
+// versionString falls back to the module version recorded by the Go toolchain.
+var version = "dev"
 
 func main() {
 	args := os.Args[1:]
@@ -56,6 +61,10 @@ func main() {
 		err = runDaemon(ipc.Endpoint{Name: name})
 	case "help", "-h", "--help":
 		usage(os.Stdout)
+	case "version", "-v", "--version":
+		fmt.Println("tmux2 " + versionString())
+	case "update", "upgrade":
+		err = selfUpdate(os.Stdout, hasFlag(args, "--force"))
 	case "run":
 		// `tmux2 run <command line...>` — explicit form.
 		err = client.Exec(ep, strings.Join(args, " "))
@@ -79,6 +88,8 @@ func usage(w io.Writer) {
   tmux2 ls                   list sessions
   tmux2 kill-session -t name kill one session
   tmux2 kill-server          stop the server
+  tmux2 update               download and install the latest release
+  tmux2 version              print the version
   tmux2 <command> [args...]  run a command on the running server, e.g.
                              tmux2 new-window
                              tmux2 send-keys -t 0 "ls -la" Enter

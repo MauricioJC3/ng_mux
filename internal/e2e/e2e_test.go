@@ -14,10 +14,10 @@ import (
 
 	"github.com/creack/pty"
 
-	"github.com/inre/tmux2/internal/client"
-	"github.com/inre/tmux2/internal/ipc"
-	"github.com/inre/tmux2/internal/protocol"
-	"github.com/inre/tmux2/internal/server"
+	"github.com/MauricioJC3/ng_mux/internal/client"
+	"github.com/MauricioJC3/ng_mux/internal/ipc"
+	"github.com/MauricioJC3/ng_mux/internal/protocol"
+	"github.com/MauricioJC3/ng_mux/internal/server"
 )
 
 // execCmd sends a one-shot command line to the daemon and returns its reply.

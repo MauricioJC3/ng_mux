@@ -3,9 +3,9 @@ package server
 import (
 	"io"
 
-	"github.com/inre/tmux2/internal/layout"
-	"github.com/inre/tmux2/internal/ptyx"
-	"github.com/inre/tmux2/internal/vterm"
+	"github.com/MauricioJC3/ng_mux/internal/layout"
+	"github.com/MauricioJC3/ng_mux/internal/ptyx"
+	"github.com/MauricioJC3/ng_mux/internal/vterm"
 )
 
 // pty is the pseudo-terminal half of a pane: a child process on a real pty.

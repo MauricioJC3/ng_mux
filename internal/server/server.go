@@ -11,10 +11,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/inre/tmux2/internal/config"
-	"github.com/inre/tmux2/internal/ipc"
-	"github.com/inre/tmux2/internal/protocol"
-	"github.com/inre/tmux2/internal/render"
+	"github.com/MauricioJC3/ng_mux/internal/config"
+	"github.com/MauricioJC3/ng_mux/internal/ipc"
+	"github.com/MauricioJC3/ng_mux/internal/protocol"
+	"github.com/MauricioJC3/ng_mux/internal/render"
 )
 
 // frameInterval is how often the daemon repaints. ~33 fps is smooth for a

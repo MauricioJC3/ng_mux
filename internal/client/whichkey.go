@@ -7,7 +7,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/inre/tmux2/internal/termio"
+	"github.com/MauricioJC3/ng_mux/internal/termio"
 )
 
 // whichKeyRow is one line of the prefix cheat-sheet: the key(s) pressed after

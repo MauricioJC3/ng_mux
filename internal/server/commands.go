@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/inre/tmux2/internal/layout"
-	"github.com/inre/tmux2/internal/protocol"
+	"github.com/MauricioJC3/ng_mux/internal/layout"
+	"github.com/MauricioJC3/ng_mux/internal/protocol"
 )
 
 // command is one entry in the command layer: a canonical name, optional tmux

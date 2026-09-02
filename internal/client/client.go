@@ -13,10 +13,10 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/inre/tmux2/internal/config"
-	"github.com/inre/tmux2/internal/ipc"
-	"github.com/inre/tmux2/internal/protocol"
-	"github.com/inre/tmux2/internal/termio"
+	"github.com/MauricioJC3/ng_mux/internal/config"
+	"github.com/MauricioJC3/ng_mux/internal/ipc"
+	"github.com/MauricioJC3/ng_mux/internal/protocol"
+	"github.com/MauricioJC3/ng_mux/internal/termio"
 )
 
 // lockedWriter serializes writes to the terminal so the frame stream and the

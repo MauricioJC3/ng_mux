@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/inre/tmux2/internal/layout"
+	"github.com/MauricioJC3/ng_mux/internal/layout"
 )
 
 // --- state inspectors (take the session lock) ---

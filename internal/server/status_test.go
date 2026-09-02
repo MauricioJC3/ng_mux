@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/inre/tmux2/internal/render"
-	"github.com/inre/tmux2/internal/vterm"
+	"github.com/MauricioJC3/ng_mux/internal/render"
+	"github.com/MauricioJC3/ng_mux/internal/vterm"
 )
 
 func statusText(segs []render.StatusSegment) string {

@@ -9,7 +9,7 @@ import (
 
 	"golang.org/x/sys/windows"
 
-	"github.com/inre/tmux2/internal/ipc"
+	"github.com/MauricioJC3/ng_mux/internal/ipc"
 )
 
 // spawnDaemon starts `tmux2 __server <name>` as a detached, windowless

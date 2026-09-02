@@ -3,9 +3,9 @@ package server
 import (
 	"fmt"
 
-	"github.com/inre/tmux2/internal/layout"
-	"github.com/inre/tmux2/internal/render"
-	"github.com/inre/tmux2/internal/vterm"
+	"github.com/MauricioJC3/ng_mux/internal/layout"
+	"github.com/MauricioJC3/ng_mux/internal/render"
+	"github.com/MauricioJC3/ng_mux/internal/vterm"
 )
 
 // window is one window of a session: a binary split tree of panes with exactly

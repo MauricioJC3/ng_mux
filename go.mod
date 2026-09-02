@@ -1,4 +1,4 @@
-module github.com/inre/tmux2
+module github.com/MauricioJC3/ng_mux
 
 go 1.27.0
 

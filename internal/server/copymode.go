@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"strings"
 
-	"github.com/inre/tmux2/internal/render"
-	"github.com/inre/tmux2/internal/vterm"
+	"github.com/MauricioJC3/ng_mux/internal/render"
+	"github.com/MauricioJC3/ng_mux/internal/vterm"
 )
 
 // copyState is a pane's scrollback/selection mode. While it is non-nil the

@@ -46,9 +46,36 @@ the emulator line by line and detecting when the screen scrolls. This is
 reliable for shell output; capture is skipped entirely while a full-screen app
 (vim, less, htop) holds the alternate screen, matching tmux.
 
-## Build
+## Install
+
+**Linux / macOS** — one line, no toolchain needed:
 
 ```sh
+curl -fsSL https://raw.githubusercontent.com/MauricioJC3/ng_mux/main/install.sh | sh
+```
+
+It drops the `tmux2` binary in `~/.local/bin` (override with `TMUX2_INSTALL_DIR`)
+and adds that directory to your shell's `PATH` if it is missing.
+
+**Windows** (PowerShell):
+
+```powershell
+irm https://raw.githubusercontent.com/MauricioJC3/ng_mux/main/install.ps1 | iex
+```
+
+**Update** to the latest release at any time:
+
+```sh
+tmux2 update
+```
+
+`tmux2 version` prints the installed version.
+
+### Build from source
+
+```sh
+go install github.com/MauricioJC3/ng_mux/cmd/tmux2@latest   # needs Go 1.27+
+# or, from a clone:
 go build -o tmux2 ./cmd/tmux2       # native
 GOOS=windows go build ./cmd/tmux2   # Windows binary
 ```
@@ -61,6 +88,8 @@ tmux2 attach | a [-t name] attach to a running server
 tmux2 ls                   list sessions
 tmux2 kill-session -t name kill one session
 tmux2 kill-server          stop the server
+tmux2 update               install the latest release
+tmux2 version              print the installed version
 tmux2 <command> [args]     run a command on the running server:
   tmux2 new-window
   tmux2 split-window -h

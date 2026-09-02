@@ -3,8 +3,8 @@ package server
 import (
 	"sync"
 
-	"github.com/inre/tmux2/internal/protocol"
-	"github.com/inre/tmux2/internal/render"
+	"github.com/MauricioJC3/ng_mux/internal/protocol"
+	"github.com/MauricioJC3/ng_mux/internal/render"
 )
 
 // client is the server's view of one attached client: an outbound message

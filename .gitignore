@@ -3,3 +3,7 @@
 *.test
 *.out
 /dist/
+
+# local agent/editor tooling
+/.atl/
+/.claude/

@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/inre/tmux2/internal/layout"
-	"github.com/inre/tmux2/internal/vterm"
+	"github.com/MauricioJC3/ng_mux/internal/layout"
+	"github.com/MauricioJC3/ng_mux/internal/vterm"
 )
 
 func snapWith(cols, rows int, text string) *vterm.Snapshot {

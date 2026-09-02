@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"syscall"
 
-	"github.com/inre/tmux2/internal/ipc"
+	"github.com/MauricioJC3/ng_mux/internal/ipc"
 )
 
 // spawnDaemon starts `tmux2 __server <name>` in its own session, fully

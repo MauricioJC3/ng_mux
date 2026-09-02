@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/inre/tmux2/internal/ipc"
-	"github.com/inre/tmux2/internal/layout"
-	"github.com/inre/tmux2/internal/vterm"
+	"github.com/MauricioJC3/ng_mux/internal/ipc"
+	"github.com/MauricioJC3/ng_mux/internal/layout"
+	"github.com/MauricioJC3/ng_mux/internal/vterm"
 )
 
 // fakePty is an in-memory stand-in for *ptyx.Pane. feed() delivers bytes to

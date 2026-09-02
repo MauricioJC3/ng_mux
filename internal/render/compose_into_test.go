@@ -3,7 +3,7 @@ package render
 import (
 	"testing"
 
-	"github.com/inre/tmux2/internal/layout"
+	"github.com/MauricioJC3/ng_mux/internal/layout"
 )
 
 func framesEqual(a, b *Frame) bool {

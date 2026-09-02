@@ -13,8 +13,8 @@ import (
 	"strconv"
 	"unicode/utf8"
 
-	"github.com/inre/tmux2/internal/layout"
-	"github.com/inre/tmux2/internal/vterm"
+	"github.com/MauricioJC3/ng_mux/internal/layout"
+	"github.com/MauricioJC3/ng_mux/internal/vterm"
 )
 
 // Cell is one composited character position.

@@ -3,8 +3,8 @@ package render
 import (
 	"testing"
 
-	"github.com/inre/tmux2/internal/layout"
-	"github.com/inre/tmux2/internal/vterm"
+	"github.com/MauricioJC3/ng_mux/internal/layout"
+	"github.com/MauricioJC3/ng_mux/internal/vterm"
 )
 
 // A single inherit-everything segment must render exactly like the plain-string

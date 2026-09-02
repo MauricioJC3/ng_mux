@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/inre/tmux2/internal/protocol"
+	"github.com/MauricioJC3/ng_mux/internal/protocol"
 )
 
 // execCommand parses and runs one free-form command line, the shared path for
