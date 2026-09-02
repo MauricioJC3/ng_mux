@@ -32,6 +32,7 @@ set prefix C-a
 set history-limit 9000
 set default-shell /bin/bash
 set mouse on
+set escape-time 40
 set status-fg 3
 set status-bg 4
 bind s split-vertical
@@ -55,6 +56,9 @@ bind v split-horizontal   # trailing comment
 	}
 	if !cfg.Mouse {
 		t.Errorf("mouse = false, want true")
+	}
+	if cfg.EscapeTime != 40 {
+		t.Errorf("escape-time = %d, want 40", cfg.EscapeTime)
 	}
 	if cfg.StatusFG != 3 || cfg.StatusBG != 4 {
 		t.Errorf("status colours = %d/%d, want 3/4", cfg.StatusFG, cfg.StatusBG)
@@ -93,6 +97,24 @@ func TestMouseDefaultsOnAndCanBeDisabled(t *testing.T) {
 	off, _ := LoadFile(writeConf(t, "set mouse off\n"))
 	if off.Mouse {
 		t.Errorf("`set mouse off` should disable mouse")
+	}
+}
+
+func TestEscapeTimeDefaultsAndParses(t *testing.T) {
+	def, _ := LoadFile(filepath.Join(t.TempDir(), "none.conf"))
+	if def.EscapeTime != 25 {
+		t.Errorf("escape-time default = %d, want 25", def.EscapeTime)
+	}
+	zero, _ := LoadFile(writeConf(t, "set escape-time 0\n"))
+	if zero.EscapeTime != 0 {
+		t.Errorf("`set escape-time 0` = %d, want 0", zero.EscapeTime)
+	}
+	bad, _ := LoadFile(writeConf(t, "set escape-time -3\n"))
+	if len(bad.Warnings) != 1 {
+		t.Errorf("negative escape-time should warn, got %v", bad.Warnings)
+	}
+	if bad.EscapeTime != 25 {
+		t.Errorf("after a bad value, escape-time = %d, want the default 25", bad.EscapeTime)
 	}
 }
 

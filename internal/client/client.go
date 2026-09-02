@@ -5,19 +5,117 @@
 package client
 
 import (
-	"bufio"
 	"bytes"
 	"errors"
 	"io"
 	"os"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/MauricioJC3/ng_mux/internal/config"
 	"github.com/MauricioJC3/ng_mux/internal/ipc"
 	"github.com/MauricioJC3/ng_mux/internal/protocol"
 	"github.com/MauricioJC3/ng_mux/internal/termio"
 )
+
+// inReader is the client's stdin, delivered one byte at a time over a channel
+// so a read can be given a deadline. A bare Esc is ambiguous — it could be the
+// start of an arrow-key sequence or the user pressing Escape — and blocking for
+// the next byte forever (as a plain bufio.Reader does) makes apps that care
+// about a lone Esc misbehave while attached. ReadByteTimeout waits only
+// escape-time for the rest of a sequence, then releases the Esc on its own.
+type inReader struct {
+	ch   chan byte
+	back int // one byte of pushback, or -1
+
+	mu  sync.Mutex
+	err error
+}
+
+func newInReader(r io.Reader) *inReader {
+	ir := &inReader{ch: make(chan byte, 4096), back: -1}
+	go func() {
+		buf := make([]byte, 4096)
+		for {
+			n, err := r.Read(buf)
+			for _, b := range buf[:n] {
+				ir.ch <- b
+			}
+			if err != nil {
+				ir.mu.Lock()
+				ir.err = err
+				ir.mu.Unlock()
+				close(ir.ch)
+				return
+			}
+		}
+	}()
+	return ir
+}
+
+func (ir *inReader) readErr() error {
+	ir.mu.Lock()
+	defer ir.mu.Unlock()
+	if ir.err != nil {
+		return ir.err
+	}
+	return io.EOF
+}
+
+// ReadByte blocks for the next byte, or returns the stream's end error.
+func (ir *inReader) ReadByte() (byte, error) {
+	if ir.back >= 0 {
+		b := byte(ir.back)
+		ir.back = -1
+		return b, nil
+	}
+	b, ok := <-ir.ch
+	if !ok {
+		return 0, ir.readErr()
+	}
+	return b, nil
+}
+
+// pushBack returns one byte to the stream for the next ReadByte. Only the most
+// recent byte is kept; the input loop never needs more than one.
+func (ir *inReader) pushBack(b byte) { ir.back = int(b) }
+
+// Buffered reports how many bytes can be read without blocking.
+func (ir *inReader) Buffered() int {
+	n := len(ir.ch)
+	if ir.back >= 0 {
+		n++
+	}
+	return n
+}
+
+// ReadByteTimeout returns the next byte, or ok=false if none arrives within d
+// (or the stream ends). Already-buffered bytes are returned without waiting, so
+// an escape sequence the terminal delivered in one burst is never split by the
+// deadline. d <= 0 means "do not wait at all".
+func (ir *inReader) ReadByteTimeout(d time.Duration) (b byte, ok bool) {
+	if ir.back >= 0 {
+		b, ir.back = byte(ir.back), -1
+		return b, true
+	}
+	select {
+	case b, chOK := <-ir.ch:
+		return b, chOK
+	default:
+	}
+	if d <= 0 {
+		return 0, false
+	}
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+	select {
+	case b, chOK := <-ir.ch:
+		return b, chOK
+	case <-timer.C:
+		return 0, false
+	}
+}
 
 // lockedWriter serializes writes to the terminal so the frame stream and the
 // local command prompt never interleave mid-sequence.
@@ -99,6 +197,8 @@ func Attach(ep ipc.Endpoint, session string, in, out *os.File) error {
 		defer w.WriteString(mouseOff)
 	}
 
+	escapeDelay := time.Duration(cfg.EscapeTime) * time.Millisecond
+
 	stopResize := make(chan struct{})
 	defer close(stopResize)
 	go termio.WatchResize(out, func(s termio.Size) {
@@ -107,7 +207,7 @@ func Attach(ep ipc.Endpoint, session string, in, out *os.File) error {
 
 	// Input goroutine: stdin -> server. Ends when stdin errors.
 	inputErr := make(chan error, 1)
-	go func() { inputErr <- forwardInput(bufio.NewReaderSize(in, 4096), w, out, pc, km) }()
+	go func() { inputErr <- forwardInput(newInReader(in), w, out, pc, km, escapeDelay) }()
 
 	// Main goroutine: server -> stdout, until Bye or disconnect.
 	readErr := readFrames(pc, w)
@@ -187,8 +287,9 @@ func firstLine(s string) string {
 // forwardInput reads raw keystrokes and routes them: escape sequences (arrows,
 // mouse) via handleEscape, the prefix key into command handling (including the
 // ':' command prompt), everything else straight to the focused pane. term is
-// the real terminal, used only to size the prefix cheat-sheet popup.
-func forwardInput(br *bufio.Reader, out *lockedWriter, term *os.File, pc *protocol.Conn, km keymap) error {
+// the real terminal, used only to size the prefix cheat-sheet popup. escapeDelay
+// is how long a lone Esc waits for the rest of a sequence before being sent.
+func forwardInput(br *inReader, out *lockedWriter, term *os.File, pc *protocol.Conn, km keymap, escapeDelay time.Duration) error {
 	prefix := km.prefix
 	for {
 		b, err := br.ReadByte()
@@ -198,7 +299,7 @@ func forwardInput(br *bufio.Reader, out *lockedWriter, term *os.File, pc *protoc
 
 		switch {
 		case b == 0x1b:
-			if err := handleEscape(br, pc); err != nil {
+			if err := handleEscape(br, pc, escapeDelay); err != nil {
 				return err
 			}
 
@@ -230,6 +331,13 @@ func forwardInput(br *bufio.Reader, out *lockedWriter, term *os.File, pc *protoc
 				if line, ok := arrowCommand(br); ok {
 					pc.Write(protocol.Message{Type: protocol.TypeExec, Name: line})
 				}
+			case cmd == 'm' && km.binds["m"] == "":
+				// A local cheat-sheet: how to create, list and move between
+				// sessions. Any key dismisses it.
+				hideHelp := showSessionHelp(out, term)
+				_, _ = br.ReadByte()
+				hideHelp()
+				pc.Write(protocol.Message{Type: protocol.TypeRefresh})
 			default:
 				line, ok := km.resolveKey(cmd)
 				if !ok {
@@ -249,7 +357,7 @@ func forwardInput(br *bufio.Reader, out *lockedWriter, term *os.File, pc *protoc
 					break
 				}
 				if nb == prefix || nb == 0x1b {
-					_ = br.UnreadByte()
+					br.pushBack(nb)
 					break
 				}
 				buf = append(buf, nb)
@@ -262,10 +370,12 @@ func forwardInput(br *bufio.Reader, out *lockedWriter, term *os.File, pc *protoc
 }
 
 // handleEscape consumes an escape sequence (0x1b already read). SGR mouse
-// sequences become TypeMouse; anything else is forwarded verbatim as input.
-func handleEscape(br *bufio.Reader, pc *protocol.Conn) error {
-	b1, err := br.ReadByte()
-	if err != nil {
+// sequences become TypeMouse; anything else is forwarded verbatim as input. A
+// lone Esc with nothing behind it within escapeDelay is forwarded on its own
+// rather than held until the next keystroke.
+func handleEscape(br *inReader, pc *protocol.Conn, escapeDelay time.Duration) error {
+	b1, ok := br.ReadByteTimeout(escapeDelay)
+	if !ok {
 		return pc.Write(protocol.Message{Type: protocol.TypeInput, Data: []byte{0x1b}})
 	}
 	if b1 != '[' {
@@ -346,7 +456,7 @@ func parseSGRMouse(body []byte) (protocol.Message, bool) {
 }
 
 // commandPrompt runs the ':' line editor locally, drawing on the bottom row.
-func commandPrompt(br *bufio.Reader, out *lockedWriter, pc *protocol.Conn) {
+func commandPrompt(br *inReader, out *lockedWriter, pc *protocol.Conn) {
 	var buf []byte
 	draw := func() { out.WriteString("\x1b[?25h\x1b[999;1H\x1b[2K:" + string(buf)) }
 	draw()
@@ -448,7 +558,7 @@ func (km keymap) resolveKey(key byte) (line string, ok bool) {
 
 // arrowCommand reads the "[A|B|C|D" body of an arrow key pressed after the
 // prefix (the leading ESC is already consumed) and maps it to a focus move.
-func arrowCommand(br *bufio.Reader) (string, bool) {
+func arrowCommand(br io.ByteReader) (string, bool) {
 	if b1, err := br.ReadByte(); err != nil || b1 != '[' {
 		return "", false
 	}
