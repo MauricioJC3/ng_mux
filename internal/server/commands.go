@@ -73,6 +73,7 @@ func commandList() []command {
 		{name: "send-keys", aliases: []string{"send"}, run: cmdSendKeys},
 		{name: "copy-mode", run: cmdCopyMode},
 		{name: "paste-buffer", run: cmdPasteBuffer},
+		{name: "new-session", aliases: []string{"new"}, run: cmdNewSession},
 		{name: "detach-client", aliases: []string{"detach"}, needsClient: true, run: cmdDetach},
 		{name: "next-session", needsClient: true, run: cmdNextSession},
 		{name: "previous-session", needsClient: true, run: cmdPrevSession},
@@ -250,6 +251,48 @@ func cmdPasteBuffer(c *cmdCtx) (string, error) {
 func cmdDetach(c *cmdCtx) (string, error) {
 	c.cl.send(protocol.Message{Type: protocol.TypeBye})
 	return "", nil
+}
+
+// cmdNewSession creates a session and, when issued from an attached client,
+// moves that client into it. Forms: `new-session`, `new-session -s NAME`,
+// `new-session NAME`. Without a name the next free integer is used, like tmux.
+func cmdNewSession(c *cmdCtx) (string, error) {
+	name := sessionNameArg(c.args)
+	explicit := name != ""
+	if !explicit {
+		name = c.srv.nextSessionName()
+	} else if c.srv.hasSession(name) {
+		return "", fmt.Errorf("session %q already exists", name)
+	}
+
+	sess, err := c.srv.getOrCreateSession(name)
+	if err != nil {
+		return "", err
+	}
+	if c.cl != nil {
+		if cols, rows := c.cl.size(); cols > 0 && rows > 0 {
+			sess.resize(cols, rows)
+		}
+		c.cl.setSession(sess.name)
+	}
+	return "", nil
+}
+
+// sessionNameArg pulls a session name out of a new-session arg list: the value
+// after -s or -t, else the first token that is not a flag.
+func sessionNameArg(args []string) string {
+	if v, _ := takeFlagValue(args, "-s"); v != "" {
+		return v
+	}
+	if v, _ := takeFlagValue(args, "-t"); v != "" {
+		return v
+	}
+	for _, a := range args {
+		if !strings.HasPrefix(a, "-") {
+			return a
+		}
+	}
+	return ""
 }
 
 func cmdNextSession(c *cmdCtx) (string, error) {

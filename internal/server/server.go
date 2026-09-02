@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"strconv"
 	"sync"
 	"time"
 
@@ -144,6 +145,27 @@ func (s *Server) getOrCreateSession(name string) (*session, error) {
 	s.order = append(s.order, name)
 	s.mu.Unlock()
 	return sess, nil
+}
+
+// nextSessionName returns the lowest non-negative integer name that is not
+// already taken, matching tmux's naming for sessions created without a name.
+func (s *Server) nextSessionName() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i := 0; ; i++ {
+		name := strconv.Itoa(i)
+		if _, taken := s.sessions[name]; !taken {
+			return name
+		}
+	}
+}
+
+// hasSession reports whether a session by that name currently exists.
+func (s *Server) hasSession(name string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	_, ok := s.sessions[name]
+	return ok
 }
 
 // sessionEmptied is invoked by a session when its last window closes.
@@ -288,6 +310,7 @@ func (s *Server) serveClient(pc *protocol.Conn, attach protocol.Message) {
 	}
 
 	cl := newClient(pc, sess.name)
+	cl.setSize(attach.Cols, attach.Rows)
 	s.addClient(cl)
 	defer s.removeClient(cl)
 
@@ -307,6 +330,7 @@ func (s *Server) serveClient(pc *protocol.Conn, attach protocol.Message) {
 				cl.reset()
 			}
 		case protocol.TypeResize:
+			cl.setSize(msg.Cols, msg.Rows)
 			if cur != nil {
 				cur.resize(msg.Cols, msg.Rows)
 				s.markDirty(cur)
