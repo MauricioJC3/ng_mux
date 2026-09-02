@@ -1,0 +1,5 @@
+/tmux2
+/tmux2.exe
+*.test
+*.out
+/dist/
