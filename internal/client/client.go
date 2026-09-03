@@ -553,6 +553,9 @@ var defaultKeyCommands = map[byte]string{
 	']': "paste-buffer",
 	'z': "resize-pane -Z", // toggle full-screen zoom for the active pane
 	'q': "display-panes",  // briefly show each pane's index
+	'{': "swap-pane -U",   // swap the active pane with the previous one
+	'}': "swap-pane -D",   // swap the active pane with the next one
+	'!': "break-pane",     // move the active pane into its own window
 	'H': "resize-pane -L",
 	'J': "resize-pane -D",
 	'K': "resize-pane -U",

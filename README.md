@@ -149,6 +149,8 @@ Prefix is **Ctrl-b** (same as tmux).
 | `Ctrl-b H/J/K/L`| resize pane left/down/up/right |
 | `Ctrl-b z`      | zoom focused pane (toggle full screen) |
 | `Ctrl-b q`      | flash each pane's index    |
+| `Ctrl-b {` / `}`| swap focused pane with previous / next |
+| `Ctrl-b !`      | break focused pane into its own window |
 | `Ctrl-b x`      | kill focused pane          |
 | `Ctrl-b c`      | new window                 |
 | `Ctrl-b n` / `p`| next / previous window     |
@@ -165,6 +167,9 @@ Prefix is **Ctrl-b** (same as tmux).
 In copy-mode: arrows / PageUp / PageDown move and scroll, `g` / `G` jump to the
 oldest / newest line, `Space` starts a selection, `Enter` or `y` copies it and
 exits, `Esc` or `q` exits.
+
+To pull a pane back in from another window, `Ctrl-b : join-pane -s N` (add `-h`
+for a left/right split); it is the inverse of `Ctrl-b !`.
 
 ### Config file
 

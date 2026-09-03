@@ -117,6 +117,78 @@ func (s *session) spawnWindow(cols, rows int) (*window, error) {
 	return w, nil
 }
 
+// breakPane moves the current window's active pane into a new window of its
+// own, keeping its shell running. It is a no-op error when the window has just
+// one pane.
+func (s *session) breakPane() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	w := s.current()
+	if w == nil {
+		return nil
+	}
+	cols, rows := s.cols, s.contentRows()
+	p := w.detachPane(w.active, cols, rows)
+	if p == nil {
+		return fmt.Errorf("break-pane: the window has only one pane")
+	}
+	nw := wrapWindow(s.nextWin(), s.defaultWindowName(), p, s.opts.defaultShell,
+		s.opts.historyLimit, s.opts.newPane)
+	s.windows = append(s.windows, nw)
+	s.cur = len(s.windows) - 1
+	nw.applyLayout(cols, rows)
+	return nil
+}
+
+// joinPane pulls the active pane of window srcIdx into the current window,
+// splitting the current active pane along dir. If the source window is left
+// empty it is removed. The room check happens before any pane moves, so a
+// join that will not fit changes nothing.
+func (s *session) joinPane(srcIdx int, dir layout.Orientation) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	dst := s.current()
+	if dst == nil {
+		return nil
+	}
+	if srcIdx < 0 || srcIdx >= len(s.windows) {
+		return fmt.Errorf("join-pane: no window %d", srcIdx)
+	}
+	src := s.windows[srcIdx]
+	if src == dst {
+		return fmt.Errorf("join-pane: source and target are the same window")
+	}
+	p := src.panes[src.active]
+	if p == nil {
+		return fmt.Errorf("join-pane: source window has no pane")
+	}
+	cols, rows := s.cols, s.contentRows()
+	if !layout.CanSplit(dst.tree, dst.active, dir, dst.outer(cols, rows)) {
+		return fmt.Errorf("join-pane: not enough room to split the target window")
+	}
+
+	lastInSrc := len(src.panes) == 1
+	if lastInSrc {
+		delete(src.panes, p.id)
+		src.tree = nil
+	} else {
+		src.detachPane(p.id, cols, rows)
+	}
+	if err := dst.adoptPane(p, dir, cols, rows); err != nil {
+		return err // unreachable: the room check above already passed
+	}
+	if lastInSrc {
+		s.removeWindow(src)
+	}
+	for i, w := range s.windows {
+		if w == dst {
+			s.cur = i
+			break
+		}
+	}
+	return nil
+}
+
 func (s *session) defaultWindowName() string {
 	sh := s.opts.defaultShell
 	if sh == "" {
