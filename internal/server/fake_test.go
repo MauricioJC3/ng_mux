@@ -100,6 +100,7 @@ type fakeScreen struct {
 	hist       int
 	histLimit  int
 	dirty      bool
+	fillCh     rune // when non-zero, snapshots/scrollback return this in every cell
 }
 
 func newFakeScreen(cols, rows int) *fakeScreen {
@@ -159,7 +160,13 @@ func (s *fakeScreen) ScrollbackView(offset, rows int) vterm.Snapshot {
 	if rows < 1 {
 		rows = 1
 	}
-	return vterm.Snapshot{Cols: s.cols, Rows: rows, Cells: make([]vterm.Cell, s.cols*rows)}
+	cells := make([]vterm.Cell, s.cols*rows)
+	if s.fillCh != 0 {
+		for i := range cells {
+			cells[i] = vterm.Cell{Ch: s.fillCh, FG: vterm.ColorDefault, BG: vterm.ColorDefault}
+		}
+	}
+	return vterm.Snapshot{Cols: s.cols, Rows: rows, Cells: cells}
 }
 
 func (s *fakeScreen) HistoryLen() int {
@@ -248,6 +255,7 @@ func newTestServer(t testing.TB) (*Server, *fakeFleet) {
 		defaultShell: "/bin/fakesh",
 		statusFG:     0,
 		statusBG:     7,
+		setClipboard: true,
 		newPane:      ff.factory(),
 	})
 	t.Cleanup(srv.shutdownAll)

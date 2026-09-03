@@ -88,6 +88,7 @@ func Run(ep ipc.Endpoint, initCols, initRows int, logger *log.Logger) error {
 		defaultShell: cfg.DefaultShell,
 		statusFG:     cfg.StatusFG,
 		statusBG:     cfg.StatusBG,
+		setClipboard: cfg.SetClipboard,
 	})
 
 	ln, err := ipc.Listen(ep)
@@ -329,9 +330,17 @@ func (s *Server) serveClient(pc *protocol.Conn, attach protocol.Message) {
 		cur := s.sessionByName(cl.session())
 		switch msg.Type {
 		case protocol.TypeInput:
-			if cur != nil && cur.input(msg.Data) {
-				s.markDirty(cur)
-				cl.reset()
+			if cur != nil {
+				repaint, yank := cur.input(msg.Data)
+				if yank != "" && s.opts.setClipboard {
+					if seq := osc52(yank); seq != nil {
+						cl.send(protocol.Message{Type: protocol.TypeSetClipboard, Data: seq})
+					}
+				}
+				if repaint {
+					s.markDirty(cur)
+					cl.reset()
+				}
 			}
 		case protocol.TypeResize:
 			cl.setSize(msg.Cols, msg.Rows)

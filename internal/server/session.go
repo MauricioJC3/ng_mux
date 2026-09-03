@@ -20,6 +20,7 @@ type sessionOpts struct {
 	historyLimit       int
 	defaultShell       string // empty => platform default
 	statusFG, statusBG int
+	setClipboard       bool // mirror copy-mode yanks to the OS clipboard (OSC 52)
 
 	// newPane builds a pane. Nil means the production factory (startPane);
 	// tests inject a fake so session/window logic runs without a real shell.
@@ -289,26 +290,29 @@ func (s *session) resize(cols, rows int) {
 }
 
 // input routes raw bytes: to the focused pane's copy-mode scroller if it is in
-// copy-mode, otherwise straight to its pty. It returns true when the client
+// copy-mode, otherwise straight to its pty. repaint is true when the client
 // should be sent a full repaint (copy-mode navigation moves the whole view).
-func (s *session) input(data []byte) (repaint bool) {
+// yanked is the text a copy-mode yank just produced, for the caller to mirror
+// to the OS clipboard (empty otherwise).
+func (s *session) input(data []byte) (repaint bool, yanked string) {
 	s.mu.Lock()
 	var p *pane
 	if w := s.current(); w != nil {
 		p = w.panes[w.active]
 	}
 	if p != nil && p.copy != nil {
-		if text, _ := p.copyKey(data); text != "" {
+		text, _ := p.copyKey(data)
+		if text != "" {
 			s.pasteBuf = text
 		}
 		s.mu.Unlock()
-		return true
+		return true, text
 	}
 	s.mu.Unlock()
 	if p != nil {
 		_, _ = p.pt.Write(data)
 	}
-	return false
+	return false, ""
 }
 
 // current returns the current window, or nil if the session has none. Caller

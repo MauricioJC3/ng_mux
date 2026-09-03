@@ -37,6 +37,7 @@ type Config struct {
 	EscapeTime   int               // ms to wait for a sequence after a lone Esc (tmux's escape-time)
 	StatusFG     int               // status bar foreground colour index (0..255)
 	StatusBG     int               // status bar background colour index (0..255)
+	SetClipboard bool              // copy-mode yank also sets the OS clipboard via OSC 52
 	Binds        map[string]string // key (single rune) -> command name
 
 	// Warnings holds human-readable notes about lines that were ignored.
@@ -53,6 +54,7 @@ func Default() Config {
 		EscapeTime:   25,
 		StatusFG:     0,
 		StatusBG:     7,
+		SetClipboard: true,
 		Binds:        map[string]string{},
 	}
 }
@@ -156,6 +158,12 @@ func (c *Config) set(name, value string) error {
 			return err
 		}
 		c.Mouse = on
+	case "set-clipboard":
+		on, err := parseBool(value)
+		if err != nil {
+			return err
+		}
+		c.SetClipboard = on
 	case "escape-time":
 		n, err := strconv.Atoi(value)
 		if err != nil || n < 0 {
