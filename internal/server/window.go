@@ -17,6 +17,11 @@ type window struct {
 	panes  map[layout.PaneID]*pane
 	active layout.PaneID
 
+	// zoom is the pane currently shown full-screen, or 0 when the window is
+	// tiled normally. A zoomed pane keeps its place in the tree; only the
+	// rendering and sizing treat it as if it owned the whole content area.
+	zoom layout.PaneID
+
 	shell     string
 	histLimit int
 	newPane   paneFactory
@@ -53,12 +58,53 @@ func (w *window) outer(cols, rows int) layout.Rect {
 }
 
 // applyLayout pushes each pane's computed rectangle to its pty and emulator.
+// While a pane is zoomed only that pane is sized, to the whole content area;
+// the hidden panes keep their last size until the window is un-zoomed.
 func (w *window) applyLayout(cols, rows int) {
+	if zp := w.zoomedPane(); zp != nil {
+		zp.resize(max1(cols), max1(rows))
+		return
+	}
 	for id, r := range layout.Compute(w.tree, w.outer(cols, rows)) {
 		if p := w.panes[id]; p != nil {
 			p.resize(max1(r.W), max1(r.H))
 		}
 	}
+}
+
+// zoomedPane returns the pane shown full-screen, or nil when the window is not
+// zoomed. If the zoomed pane has since closed it self-heals by clearing zoom.
+func (w *window) zoomedPane() *pane {
+	if w.zoom == 0 {
+		return nil
+	}
+	p := w.panes[w.zoom]
+	if p == nil {
+		w.zoom = 0
+	}
+	return p
+}
+
+// toggleZoom flips full-screen zoom for the active pane and re-sizes panes to
+// match. Zooming a window with a single pane is a no-op. It reports whether the
+// window is zoomed afterwards.
+func (w *window) toggleZoom(cols, rows int) bool {
+	if w.zoom != 0 {
+		w.zoom = 0
+	} else if len(w.panes) > 1 {
+		w.zoom = w.active
+	}
+	w.applyLayout(cols, rows)
+	return w.zoom != 0
+}
+
+// unzoom clears zoom and restores the tiled layout, if the window was zoomed.
+func (w *window) unzoom(cols, rows int) {
+	if w.zoom == 0 {
+		return
+	}
+	w.zoom = 0
+	w.applyLayout(cols, rows)
 }
 
 // split adds a pane beside the active one, sizing it to the new layout.
@@ -74,6 +120,7 @@ func (w *window) split(sess *session, dir layout.Orientation, cols, rows int) er
 		return err
 	}
 	p.win = w
+	w.zoom = 0 // a new pane is only useful visible; drop zoom like tmux does
 	w.tree = newTree
 	w.panes[newID] = p
 	w.active = newID
@@ -87,6 +134,9 @@ func (w *window) focus(delta int) {
 }
 
 func (w *window) resizeActive(dir layout.Orientation, delta, cols, rows int) {
+	if w.zoom != 0 {
+		return // a zoomed pane already fills the area; nothing to resize
+	}
 	if err := layout.Resize(w.tree, w.active, dir, delta, w.outer(cols, rows)); err == nil {
 		w.applyLayout(cols, rows)
 	}
@@ -99,6 +149,9 @@ func (w *window) enterCopy(cols, rows int) {
 		return
 	}
 	r := layout.Compute(w.tree, w.outer(cols, rows))[w.active]
+	if w.zoom == w.active {
+		r = w.outer(cols, rows) // the zoomed pane owns the whole content area
+	}
 	p.copy = newCopyState(max1(r.W), max1(r.H))
 }
 
@@ -140,6 +193,28 @@ func (w *window) closeAll() {
 // grown backing arrays for the next frame. A pane in copy-mode is drawn from
 // its scrollback view with the selection highlighted.
 func (w *window) views(cols, rows int, views []render.PaneView, snaps []vterm.Snapshot) ([]render.PaneView, []vterm.Snapshot) {
+	if zp := w.zoomedPane(); zp != nil {
+		if cap(snaps) < 1 {
+			snaps = make([]vterm.Snapshot, 1)
+		} else {
+			snaps = snaps[:1]
+		}
+		sn := &snaps[0]
+		full := w.outer(cols, rows)
+		pv := render.PaneView{ID: w.zoom, Rect: full, Active: true}
+		if zp.copy != nil {
+			*sn = zp.vt.ScrollbackView(zp.copy.offset, max1(full.H))
+			pv.Sel = zp.copy.selection()
+			pv.CopyCur = zp.copy.cursor()
+			total := zp.vt.HistoryLen()
+			pv.Overlay = fmt.Sprintf(" COPY %d/%d ", total-zp.copy.offset, total)
+		} else {
+			zp.vt.SnapshotInto(sn)
+		}
+		pv.Snap = sn
+		return append(views, pv), snaps
+	}
+
 	rects := layout.Compute(w.tree, w.outer(cols, rows))
 
 	// Size snaps to the pane count up front: taking &snaps[i] below is only
