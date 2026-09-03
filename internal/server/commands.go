@@ -191,10 +191,15 @@ func cmdSelectLayout(c *cmdCtx) (string, error) {
 	}
 	return "", c.sess.withWindow(func(w *window, cols, rows int) error {
 		ids := layout.Panes(w.tree)
-		if len(ids) > 0 {
-			w.tree = layout.Arrange(ids, name)
-			w.applyLayout(cols, rows)
+		if len(ids) == 0 {
+			return nil
 		}
+		newTree := layout.Arrange(ids, name)
+		if !layout.FitsMinimum(newTree, w.outer(cols, rows)) {
+			return fmt.Errorf("not enough room for the %q layout", name)
+		}
+		w.tree = newTree
+		w.applyLayout(cols, rows)
 		return nil
 	})
 }

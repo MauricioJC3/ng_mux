@@ -159,6 +159,20 @@ func fits(dir Orientation, r Rect) bool {
 	return (r.H-dividerSize)/2 >= minPaneH && r.W >= minPaneW
 }
 
+// FitsMinimum reports whether every pane in root is given at least
+// minPaneW x minPaneH cells when the tree is computed inside outer. It is the
+// check select-layout / Arrange callers use to refuse a preset that would
+// collapse panes, the same floor Split enforces on an interactive split. A nil
+// root has no panes and trivially fits.
+func FitsMinimum(root *Node, outer Rect) bool {
+	for _, r := range Compute(root, outer) {
+		if r.W < minPaneW || r.H < minPaneH {
+			return false
+		}
+	}
+	return true
+}
+
 // Resize nudges the pane's boundary by delta cells along the given axis.
 // dir == Horizontal changes the pane's width (adjusts the nearest ancestor
 // left/right split); dir == Vertical changes its height. A positive delta

@@ -249,3 +249,33 @@ func TestNeighborWraps(t *testing.T) {
 		t.Errorf("next after 1 = %d, want 2", got)
 	}
 }
+
+func TestFitsMinimum(t *testing.T) {
+	ids := []PaneID{1, 2, 3, 4}
+	tests := []struct {
+		name  string
+		outer Rect
+		want  bool
+	}{
+		{"roomy", Rect{W: 120, H: 40}, true},
+		{"exactly enough width", Rect{W: 4*minPaneW + 3*dividerSize, H: 20}, true},
+		{"one column short", Rect{W: 4*minPaneW + 3*dividerSize - 1, H: 20}, false},
+		{"exactly min height", Rect{W: 120, H: minPaneH}, true},
+		{"one row short", Rect{W: 120, H: minPaneH - 1}, false},
+		{"degenerate", Rect{W: 10, H: 6}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tree := Arrange(ids, LayoutEvenHorizontal)
+			if got := FitsMinimum(tree, tt.outer); got != tt.want {
+				t.Fatalf("FitsMinimum(%+v) = %v, want %v", tt.outer, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFitsMinimumNilRoot(t *testing.T) {
+	if !FitsMinimum(nil, Rect{W: 1, H: 1}) {
+		t.Fatal("a nil root has no panes and must fit")
+	}
+}
