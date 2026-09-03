@@ -36,18 +36,24 @@ func newWindow(id int, name string, paneID layout.PaneID, cols, rows int, shell 
 	if err != nil {
 		return nil, err
 	}
+	return wrapWindow(id, name, p, shell, histLimit, newPane), nil
+}
+
+// wrapWindow builds a window around an already-running pane. break-pane uses it
+// to move a live pane into a window of its own without restarting its shell.
+func wrapWindow(id int, name string, p *pane, shell string, histLimit int, newPane paneFactory) *window {
 	w := &window{
 		id:        id,
 		name:      name,
-		tree:      layout.NewLeaf(paneID),
-		panes:     map[layout.PaneID]*pane{paneID: p},
-		active:    paneID,
+		tree:      layout.NewLeaf(p.id),
+		panes:     map[layout.PaneID]*pane{p.id: p},
+		active:    p.id,
 		shell:     shell,
 		histLimit: histLimit,
 		newPane:   newPane,
 	}
 	p.win = w
-	return w, nil
+	return w
 }
 
 // resizeStep is how many cells one resize keystroke moves a boundary.
@@ -177,6 +183,58 @@ func (w *window) removePane(id layout.PaneID, cols, rows int) (empty bool) {
 	}
 	w.applyLayout(cols, rows)
 	return false
+}
+
+// swapActive exchanges the active pane with its neighbour (delta -1 previous,
+// +1 next) in traversal order, keeping focus on the pane that was active. The
+// two slots may differ in size, so the layout is re-applied.
+func (w *window) swapActive(delta, cols, rows int) {
+	other := layout.Neighbor(w.tree, w.active, delta)
+	if other == w.active {
+		return
+	}
+	if layout.SwapPanes(w.tree, w.active, other) {
+		w.zoom = 0
+		w.applyLayout(cols, rows)
+	}
+}
+
+// detachPane removes a pane from the window WITHOUT closing it and re-flows the
+// rest, returning the still-running pane so a caller can move it to another
+// window. It returns nil if the pane is unknown or is the window's last one
+// (breaking out the only pane would just leave an empty window).
+func (w *window) detachPane(id layout.PaneID, cols, rows int) *pane {
+	p, ok := w.panes[id]
+	if !ok || len(w.panes) <= 1 {
+		return nil
+	}
+	delete(w.panes, id)
+	if newTree, focus, err := layout.Remove(w.tree, id); err == nil {
+		w.tree = newTree
+		if w.active == id {
+			w.active = focus
+		}
+	}
+	w.zoom = 0
+	w.applyLayout(cols, rows)
+	return p
+}
+
+// adoptPane splices an existing, already-running pane in beside the active one,
+// splitting dir. It returns ErrNoRoom (via layout.Split) without changing
+// anything when the split will not fit.
+func (w *window) adoptPane(p *pane, dir layout.Orientation, cols, rows int) error {
+	newTree, err := layout.Split(w.tree, w.active, p.id, dir, w.outer(cols, rows))
+	if err != nil {
+		return err
+	}
+	w.zoom = 0
+	w.tree = newTree
+	w.panes[p.id] = p
+	w.active = p.id
+	p.win = w
+	w.applyLayout(cols, rows)
+	return nil
 }
 
 func (w *window) closeAll() {

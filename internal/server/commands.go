@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -60,6 +61,9 @@ func commandList() []command {
 		{name: "split-window", aliases: []string{"splitw"}, run: cmdSplitWindow},
 		{name: "new-window", aliases: []string{"neww"}, run: cmdNewWindow},
 		{name: "kill-pane", aliases: []string{"killp"}, run: cmdKillPane},
+		{name: "swap-pane", aliases: []string{"swapp"}, run: cmdSwapPane},
+		{name: "break-pane", aliases: []string{"breakp"}, run: cmdBreakPane},
+		{name: "join-pane", aliases: []string{"joinp"}, run: cmdJoinPane},
 		{name: "kill-window", aliases: []string{"killw"}, run: cmdKillWindow},
 		{name: "kill-session", run: cmdKillSession},
 		{name: "next-window", aliases: []string{"next"}, run: cmdNextWindow},
@@ -113,6 +117,38 @@ func cmdKillPane(c *cmdCtx) (string, error) {
 		}
 		return nil
 	})
+}
+
+// cmdSwapPane swaps the active pane with its previous (-U) or next (-D)
+// neighbour in pane order. No flag defaults to -D.
+func cmdSwapPane(c *cmdCtx) (string, error) {
+	delta := +1
+	if hasFlag(c.args, "-U") {
+		delta = -1
+	}
+	return "", c.sess.withWindow(func(w *window, cols, rows int) error {
+		w.swapActive(delta, cols, rows)
+		return nil
+	})
+}
+
+func cmdBreakPane(c *cmdCtx) (string, error) {
+	return "", c.sess.breakPane()
+}
+
+// cmdJoinPane pulls the active pane of the window named by -s into the current
+// window. -h splits left/right, otherwise (like split-window) top/bottom.
+func cmdJoinPane(c *cmdCtx) (string, error) {
+	src, _ := takeFlagValue(c.args, "-s")
+	idx, err := strconv.Atoi(strings.TrimSpace(src))
+	if err != nil {
+		return "", fmt.Errorf("join-pane needs -s <window-index>")
+	}
+	dir := layout.Vertical
+	if hasFlag(c.args, "-h") {
+		dir = layout.Horizontal
+	}
+	return "", c.sess.joinPane(idx, dir)
 }
 
 func cmdKillWindow(c *cmdCtx) (string, error) {

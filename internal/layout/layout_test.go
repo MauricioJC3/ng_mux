@@ -279,3 +279,47 @@ func TestFitsMinimumNilRoot(t *testing.T) {
 		t.Fatal("a nil root has no panes and must fit")
 	}
 }
+
+func TestSwapPanes(t *testing.T) {
+	root := Arrange([]PaneID{1, 2, 3}, LayoutEvenHorizontal)
+
+	if !SwapPanes(root, 1, 3) {
+		t.Fatal("SwapPanes(1,3) returned false for two present panes")
+	}
+	if got := Panes(root); !reflect.DeepEqual(got, []PaneID{3, 2, 1}) {
+		t.Fatalf("after swap, order = %v, want [3 2 1]", got)
+	}
+
+	if SwapPanes(root, 2, 2) {
+		t.Fatal("SwapPanes(x,x) should be a no-op returning false")
+	}
+	if SwapPanes(root, 2, 99) {
+		t.Fatal("SwapPanes with an unknown pane should return false")
+	}
+	if got := Panes(root); !reflect.DeepEqual(got, []PaneID{3, 2, 1}) {
+		t.Fatalf("failed swaps changed the tree: order = %v, want [3 2 1]", got)
+	}
+}
+
+func TestCanSplitDoesNotMutate(t *testing.T) {
+	outer := Rect{W: 80, H: 24}
+	root := NewLeaf(1)
+
+	if !CanSplit(root, 1, Horizontal, outer) {
+		t.Fatal("CanSplit should allow a horizontal split of a lone pane at 80x24")
+	}
+	if got := Panes(root); !reflect.DeepEqual(got, []PaneID{1}) {
+		t.Fatalf("CanSplit mutated the tree: panes = %v, want [1]", got)
+	}
+
+	tiny := Rect{W: 5, H: 4}
+	if CanSplit(root, 1, Horizontal, tiny) {
+		t.Fatal("CanSplit should reject a split with no room")
+	}
+	if !CanSplit(root, 1, Horizontal, outer) {
+		t.Fatal("a rejected CanSplit must not have changed the outcome of a later call")
+	}
+	if CanSplit(root, 99, Horizontal, outer) {
+		t.Fatal("CanSplit should reject an unknown pane")
+	}
+}

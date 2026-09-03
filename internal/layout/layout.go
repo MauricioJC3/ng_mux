@@ -159,6 +159,20 @@ func fits(dir Orientation, r Rect) bool {
 	return (r.H-dividerSize)/2 >= minPaneH && r.W >= minPaneW
 }
 
+// CanSplit reports whether Split(root, target, _, dir, outer) would succeed:
+// target is present and both halves would stay above the minimum pane size. It
+// does not modify the tree, so callers can test the room before committing to
+// moving a pane (join-pane).
+func CanSplit(root *Node, target PaneID, dir Orientation, outer Rect) bool {
+	if dir != Horizontal && dir != Vertical {
+		return false
+	}
+	if leaf, _ := find(root, target); leaf == nil {
+		return false
+	}
+	return fits(dir, Compute(root, outer)[target])
+}
+
 // FitsMinimum reports whether every pane in root is given at least
 // minPaneW x minPaneH cells when the tree is computed inside outer. It is the
 // check select-layout / Arrange callers use to refuse a preset that would
@@ -329,6 +343,23 @@ func Panes(root *Node) []PaneID {
 	}
 	walk(root)
 	return ids
+}
+
+// SwapPanes exchanges the positions of panes a and b in the tree by swapping
+// the pane IDs their leaves carry. The split structure and every ratio stay
+// put; only which pane sits in which slot changes. It reports whether both
+// panes were found (a no-op when a == b).
+func SwapPanes(root *Node, a, b PaneID) bool {
+	if a == b {
+		return false
+	}
+	la, _ := find(root, a)
+	lb, _ := find(root, b)
+	if la == nil || lb == nil {
+		return false
+	}
+	la.Pane, lb.Pane = lb.Pane, la.Pane
+	return true
 }
 
 // Neighbor returns the pane after (delta=+1) or before (delta=-1) cur in
