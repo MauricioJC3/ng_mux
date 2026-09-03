@@ -15,7 +15,8 @@ func windowViews(s *session) []render.PaneView {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	w := s.windows[s.cur]
-	views, _ := w.views(s.cols, s.contentRows(), nil, []vterm.Snapshot(nil))
+	showNums := time.Now().Before(s.displayPanesUntil)
+	views, _ := w.views(s.cols, s.contentRows(), showNums, nil, []vterm.Snapshot(nil))
 	return views
 }
 

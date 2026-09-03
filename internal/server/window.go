@@ -191,8 +191,16 @@ func (w *window) closeAll() {
 // into the caller-owned views slice and using snaps as reusable snapshot
 // storage (one entry per pane). Both are returned so the session can keep the
 // grown backing arrays for the next frame. A pane in copy-mode is drawn from
-// its scrollback view with the selection highlighted.
-func (w *window) views(cols, rows int, views []render.PaneView, snaps []vterm.Snapshot) ([]render.PaneView, []vterm.Snapshot) {
+// its scrollback view with the selection highlighted. When showNums is set each
+// pane is badged with its select-pane index (display-panes).
+func (w *window) views(cols, rows int, showNums bool, views []render.PaneView, snaps []vterm.Snapshot) ([]render.PaneView, []vterm.Snapshot) {
+	numOf := map[layout.PaneID]int{}
+	if showNums {
+		for i, id := range layout.Panes(w.tree) {
+			numOf[id] = i
+		}
+	}
+
 	if zp := w.zoomedPane(); zp != nil {
 		if cap(snaps) < 1 {
 			snaps = make([]vterm.Snapshot, 1)
@@ -202,6 +210,9 @@ func (w *window) views(cols, rows int, views []render.PaneView, snaps []vterm.Sn
 		sn := &snaps[0]
 		full := w.outer(cols, rows)
 		pv := render.PaneView{ID: w.zoom, Rect: full, Active: true}
+		if showNums {
+			pv.Badge = fmt.Sprintf(" %d ", numOf[w.zoom])
+		}
 		if zp.copy != nil {
 			*sn = zp.vt.ScrollbackView(zp.copy.offset, max1(full.H))
 			pv.Sel = zp.copy.selection()
@@ -231,6 +242,9 @@ func (w *window) views(cols, rows int, views []render.PaneView, snaps []vterm.Sn
 		sn := &snaps[i]
 		i++
 		pv := render.PaneView{ID: id, Rect: rects[id], Active: id == w.active}
+		if showNums {
+			pv.Badge = fmt.Sprintf(" %d ", numOf[id])
+		}
 		if p.copy != nil {
 			*sn = p.vt.ScrollbackView(p.copy.offset, max1(rects[id].H))
 			pv.Sel = p.copy.selection()

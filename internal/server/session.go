@@ -51,6 +51,12 @@ type session struct {
 	// (a command changed focus, layout, a window name, ...). frame() clears it.
 	needsRepaint bool
 
+	// displayPanesUntil is the wall-clock instant the per-pane index badges
+	// (display-panes) stop showing. panesShown records whether the last frame
+	// drew them, so dirty() can ask for exactly one more repaint to clear them.
+	displayPanesUntil time.Time
+	panesShown        bool
+
 	// Render scratch, touched only by frame() on the single broadcast
 	// goroutine: two frames ping-ponged so a steady repaint allocates nothing,
 	// plus reused pane-view and snapshot buffers.
@@ -286,9 +292,11 @@ func (s *session) frame() *render.Frame {
 	cols, rows := s.cols, s.rows
 	content := s.contentRows()
 	w := s.current()
+	showNums := time.Now().Before(s.displayPanesUntil)
+	s.panesShown = showNums
 	var views []render.PaneView
 	if w != nil {
-		views, s.snapScratch = w.views(cols, content, s.viewScratch[:0], s.snapScratch)
+		views, s.snapScratch = w.views(cols, content, showNums, s.viewScratch[:0], s.snapScratch)
 		s.viewScratch = views
 	}
 	status := s.buildStatus(cols)
@@ -307,6 +315,11 @@ func (s *session) dirty() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.needsRepaint {
+		return true
+	}
+	// While the display-panes badges are up, repaint every tick; once they
+	// expire, ask for one final repaint to wipe them.
+	if time.Now().Before(s.displayPanesUntil) || s.panesShown {
 		return true
 	}
 	for _, w := range s.windows {

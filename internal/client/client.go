@@ -552,6 +552,7 @@ var defaultKeyCommands = map[byte]string{
 	'[': "copy-mode",
 	']': "paste-buffer",
 	'z': "resize-pane -Z", // toggle full-screen zoom for the active pane
+	'q': "display-panes",  // briefly show each pane's index
 	'H': "resize-pane -L",
 	'J': "resize-pane -D",
 	'K': "resize-pane -U",
