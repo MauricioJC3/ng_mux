@@ -373,6 +373,9 @@ func (s *session) buildStatus(cols int) []render.StatusSegment {
 	s.statusHits = append(s.statusHits, statusHit{x0: plusX0, x1: plusX0 + 2, action: "new-window"})
 
 	if w := s.current(); w != nil {
+		if w.zoom != 0 {
+			add("-- ZOOM -- ", vterm.AttrBold)
+		}
 		if p := w.panes[w.active]; p != nil && p.copy != nil {
 			add("-- COPY -- ", vterm.AttrBold)
 		}

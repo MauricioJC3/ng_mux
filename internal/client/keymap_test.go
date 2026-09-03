@@ -23,6 +23,7 @@ func TestResolveKeyDefaults(t *testing.T) {
 		{'&', "kill-window"},
 		{'[', "copy-mode"},
 		{']', "paste-buffer"},
+		{'z', "resize-pane -Z"},
 		{'H', "resize-pane -L"},
 		{'L', "resize-pane -R"},
 		{'d', "detach-client"},

@@ -150,7 +150,8 @@ func cmdSelectWindow(c *cmdCtx) (string, error) {
 }
 
 func cmdSelectPane(c *cmdCtx) (string, error) {
-	return "", c.sess.withWindow(func(w *window, _, _ int) error {
+	return "", c.sess.withWindow(func(w *window, cols, rows int) error {
+		w.unzoom(cols, rows) // moving focus makes the hidden panes matter again
 		if idx, ok := firstInt(c.args); ok {
 			ids := layout.Panes(w.tree)
 			if idx >= 0 && idx < len(ids) {
@@ -164,7 +165,8 @@ func cmdSelectPane(c *cmdCtx) (string, error) {
 }
 
 func cmdPreviousPane(c *cmdCtx) (string, error) {
-	return "", c.sess.withWindow(func(w *window, _, _ int) error {
+	return "", c.sess.withWindow(func(w *window, cols, rows int) error {
+		w.unzoom(cols, rows)
 		w.focus(-1)
 		return nil
 	})
@@ -198,6 +200,7 @@ func cmdSelectLayout(c *cmdCtx) (string, error) {
 		if !layout.FitsMinimum(newTree, w.outer(cols, rows)) {
 			return fmt.Errorf("not enough room for the %q layout", name)
 		}
+		w.zoom = 0
 		w.tree = newTree
 		w.applyLayout(cols, rows)
 		return nil
@@ -205,9 +208,15 @@ func cmdSelectLayout(c *cmdCtx) (string, error) {
 }
 
 func cmdResizePane(c *cmdCtx) (string, error) {
+	if hasFlag(c.args, "-Z") {
+		return "", c.sess.withWindow(func(w *window, cols, rows int) error {
+			w.toggleZoom(cols, rows)
+			return nil
+		})
+	}
 	orient, delta, ok := resizePaneArgs(c.args)
 	if !ok {
-		return "", fmt.Errorf("resize-pane needs -L, -R, -U or -D")
+		return "", fmt.Errorf("resize-pane needs -L, -R, -U, -D or -Z")
 	}
 	return "", c.sess.withWindow(func(w *window, cols, rows int) error {
 		w.resizeActive(orient, delta, cols, rows)

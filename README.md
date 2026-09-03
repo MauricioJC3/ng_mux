@@ -147,6 +147,7 @@ Prefix is **Ctrl-b** (same as tmux).
 | `Ctrl-b ;`      | focus previous pane        |
 | `Ctrl-b →/↓/←/↑`| focus next / previous pane |
 | `Ctrl-b H/J/K/L`| resize pane left/down/up/right |
+| `Ctrl-b z`      | zoom focused pane (toggle full screen) |
 | `Ctrl-b x`      | kill focused pane          |
 | `Ctrl-b c`      | new window                 |
 | `Ctrl-b n` / `p`| next / previous window     |
