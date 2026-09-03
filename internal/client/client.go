@@ -298,6 +298,12 @@ func readFrames(pc *protocol.Conn, out io.Writer, overlay *atomic.Bool) error {
 			if _, err := out.Write(msg.Data); err != nil {
 				return err
 			}
+		case protocol.TypeSetClipboard:
+			// An OSC 52 sequence: no visible output, so it is safe to write
+			// even while the which-key overlay is up.
+			if _, err := out.Write(msg.Data); err != nil {
+				return err
+			}
 		case protocol.TypeExecReply:
 			if msg.Name != "" && !overlay.Load() {
 				out.Write([]byte("\x1b[999;1H\x1b[2K" + firstLine(msg.Name)))

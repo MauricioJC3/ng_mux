@@ -183,6 +183,7 @@ set default-shell /bin/bash
 set escape-time 25
 set status-fg 0
 set status-bg 4
+set set-clipboard on
 bind s split-vertical
 bind v split-horizontal
 ```
@@ -191,6 +192,11 @@ bind v split-horizontal
 escape sequence before it is sent on its own (default 25). Raise it on a slow
 link if arrow keys misfire; lower it to `0` if an app inside ngmux feels
 sluggish to react to `Esc`.
+
+`set-clipboard` (default `on`) also copies a copy-mode yank to the system
+clipboard using an OSC 52 escape, so `Ctrl-b ]` is not the only way to get it
+back. Turn it `off` if your terminal does not support OSC 52 or you would
+rather ngmux never touch the clipboard.
 
 Unknown lines are logged and skipped, never fatal.
 

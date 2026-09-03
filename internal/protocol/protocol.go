@@ -30,11 +30,12 @@ const (
 	TypeKillSession Type = "kill_session" // kill one session; carries Name
 
 	// Server -> client.
-	TypeFrame     Type = "frame"      // pre-rendered ANSI screen update; carries Data
-	TypeListReply Type = "list_reply" // carries Sessions
-	TypeExecReply Type = "exec_reply" // result of a TypeExec; Name = output text
-	TypeError     Type = "error"      // carries Name (message text)
-	TypeBye       Type = "bye"        // server is detaching or closing this client
+	TypeFrame        Type = "frame"         // pre-rendered ANSI screen update; carries Data
+	TypeListReply    Type = "list_reply"    // carries Sessions
+	TypeExecReply    Type = "exec_reply"    // result of a TypeExec; Name = output text
+	TypeError        Type = "error"         // carries Name (message text)
+	TypeBye          Type = "bye"           // server is detaching or closing this client
+	TypeSetClipboard Type = "set_clipboard" // Data is an OSC 52 sequence for the client to emit
 )
 
 // Mouse event kinds carried in a TypeMouse message's Name.

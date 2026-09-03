@@ -100,6 +100,17 @@ func TestMouseDefaultsOnAndCanBeDisabled(t *testing.T) {
 	}
 }
 
+func TestSetClipboardDefaultsOnAndCanBeDisabled(t *testing.T) {
+	def, _ := LoadFile(filepath.Join(t.TempDir(), "none.conf"))
+	if !def.SetClipboard {
+		t.Errorf("set-clipboard should default on")
+	}
+	off, _ := LoadFile(writeConf(t, "set set-clipboard off\n"))
+	if off.SetClipboard {
+		t.Errorf("`set set-clipboard off` should disable it")
+	}
+}
+
 func TestEscapeTimeDefaultsAndParses(t *testing.T) {
 	def, _ := LoadFile(filepath.Join(t.TempDir(), "none.conf"))
 	if def.EscapeTime != 25 {
