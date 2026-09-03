@@ -155,10 +155,15 @@ func (s *session) reap() {
 		case p := <-s.paneExit:
 			s.mu.Lock()
 			if w := p.win; w != nil {
-				w.removePane(p.id)
+				w.removePane(p.id, s.cols, s.contentRows())
 				if len(w.panes) == 0 {
 					s.removeWindow(w)
 				}
+				// The tree changed off the command path, so nothing else has
+				// marked the session dirty: force the next frame so the client
+				// drops the closed pane instead of waiting for the survivor to
+				// emit output.
+				s.needsRepaint = true
 			}
 			empty := len(s.windows) == 0
 			s.mu.Unlock()
