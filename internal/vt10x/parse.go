@@ -23,7 +23,33 @@ func (t *State) parse(c rune) {
 		t.logln("insert mode not implemented")
 	}
 
+	// A double-width glyph cannot straddle the right margin: wrap first so it
+	// starts on the next line, the way xterm does.
+	wide := RuneWidth(c) == 2
+	if wide && t.cur.X == t.cols-1 {
+		t.lines[t.cur.Y][t.cur.X].Mode |= attrWrap
+		t.newline(true)
+	}
+
 	t.setChar(c, &t.cur.Attr, t.cur.X, t.cur.Y)
+
+	if wide && t.cur.X+1 < t.cols {
+		// The lead cell carries the glyph and AttrWide; the next cell is a
+		// spacer flagged AttrWideTail so a renderer can skip it.
+		t.lines[t.cur.Y][t.cur.X].Mode |= AttrWide
+		spacer := t.cur.Attr
+		spacer.Char = 0
+		spacer.Mode |= AttrWideTail
+		t.lines[t.cur.Y][t.cur.X+1] = spacer
+		t.dirty[t.cur.Y] = true
+		if t.cur.X+2 < t.cols {
+			t.moveTo(t.cur.X+2, t.cur.Y)
+		} else {
+			t.cur.State |= cursorWrapNext
+		}
+		return
+	}
+
 	if t.cur.X+1 < t.cols {
 		t.moveTo(t.cur.X+1, t.cur.Y)
 	} else {

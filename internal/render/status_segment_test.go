@@ -41,3 +41,20 @@ func TestStatusSegmentAttrAndColour(t *testing.T) {
 		t.Errorf("padding cell = %+v, want a reverse-video space", tail)
 	}
 }
+
+func TestStatusSegmentWideRuneSpansTwoCells(t *testing.T) {
+	f := ComposeStyledInto(nil, 12, 2, nil, []StatusSegment{
+		{Text: "名X", FG: InheritColour, BG: InheritColour},
+	}, DefaultStatusStyle)
+
+	y := f.Rows - 1
+	if c := f.at(0, y); c.Ch != '名' || c.Width != 2 {
+		t.Fatalf("bar cell(0) = %#U width=%d, want '名' width 2", c.Ch, c.Width)
+	}
+	if c := f.at(1, y); c.Width != 0 {
+		t.Fatalf("bar cell(1) width = %d, want 0 (spacer)", c.Width)
+	}
+	if c := f.at(2, y); c.Ch != 'X' {
+		t.Fatalf("bar cell(2) = %#U, want 'X' — the wide rune must not shift it", c.Ch)
+	}
+}

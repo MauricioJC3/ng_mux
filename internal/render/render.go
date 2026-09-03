@@ -17,15 +17,17 @@ import (
 	"github.com/MauricioJC3/ng_mux/internal/vterm"
 )
 
-// Cell is one composited character position.
+// Cell is one composited character position. Width is 2 for the lead cell of a
+// double-width glyph and 0 for the spacer cell that follows it; 1 otherwise.
 type Cell struct {
-	Ch   rune
-	FG   uint32
-	BG   uint32
-	Attr uint16
+	Ch    rune
+	FG    uint32
+	BG    uint32
+	Attr  uint16
+	Width uint8
 }
 
-var blank = Cell{Ch: ' ', FG: vterm.ColorDefault, BG: vterm.ColorDefault}
+var blank = Cell{Ch: ' ', FG: vterm.ColorDefault, BG: vterm.ColorDefault, Width: 1}
 
 // Frame is a full client-sized screen plus the cursor state to show.
 type Frame struct {
@@ -198,9 +200,9 @@ func ComposeStyledInto(dst *Frame, cols, rows int, panes []PaneView, status []St
 				if p.Snap != nil {
 					sc = p.Snap.At(col, row)
 				} else {
-					sc = vterm.Cell{Ch: ' ', FG: vterm.ColorDefault, BG: vterm.ColorDefault}
+					sc = vterm.Cell{Ch: ' ', FG: vterm.ColorDefault, BG: vterm.ColorDefault, Width: 1}
 				}
-				cell := Cell{Ch: sc.Ch, FG: sc.FG, BG: sc.BG, Attr: sc.Attr}
+				cell := Cell{Ch: sc.Ch, FG: sc.FG, BG: sc.BG, Attr: sc.Attr, Width: sc.Width}
 				if p.Sel != nil && p.Sel.contains(col, row, r.W) {
 					cell.Attr ^= vterm.AttrReverse
 				}
@@ -306,6 +308,17 @@ func drawStatusSegments(f *Frame, segs []StatusSegment, style StatusStyle) {
 		f.set(x, y, c)
 		x++
 	}
+	// putRune lays one rune down, spanning two cells for a double-width glyph so
+	// the bar's column bookkeeping (done with vterm.StringWidth) stays true.
+	putRune := func(r rune, fg, bg uint32, attr uint16) {
+		if vterm.RuneWidth(r) == 2 && x+1 < f.Cols {
+			f.set(x, y, Cell{Ch: r, FG: fg, BG: bg, Attr: attr, Width: 2})
+			f.set(x+1, y, Cell{Ch: 0, FG: fg, BG: bg, Attr: attr, Width: 0})
+			x += 2
+			return
+		}
+		put(Cell{Ch: r, FG: fg, BG: bg, Attr: attr, Width: 1})
+	}
 	for _, seg := range segs {
 		fg, bg := defFG, defBG
 		attr := uint16(vterm.AttrReverse)
@@ -317,7 +330,7 @@ func drawStatusSegments(f *Frame, segs []StatusSegment, style StatusStyle) {
 		}
 		attr |= seg.Attr
 		for _, r := range seg.Text {
-			put(Cell{Ch: r, FG: fg, BG: bg, Attr: attr})
+			putRune(r, fg, bg, attr)
 		}
 	}
 	for x < f.Cols {
@@ -348,6 +361,11 @@ func Paint(prev, next *Frame) []byte {
 	for y := 0; y < next.Rows; y++ {
 		for x := 0; x < next.Cols; x++ {
 			nc := next.at(x, y)
+			// The spacer after a double-width glyph is not written: the
+			// terminal advanced two columns when the wide rune was emitted.
+			if nc.Width == 0 && x > 0 && next.at(x-1, y).Width == 2 {
+				continue
+			}
 			if prev != nil && nc == prev.at(x, y) {
 				continue
 			}
@@ -371,6 +389,9 @@ func Paint(prev, next *Frame) []byte {
 			n := utf8.EncodeRune(tmp[:], ch)
 			b.Write(tmp[:n])
 			curX = x + 1
+			if nc.Width == 2 {
+				curX = x + 2 // the terminal advanced two columns
+			}
 		}
 	}
 

@@ -26,7 +26,10 @@ Working now:
 - switch between sessions while attached
 - named sessions: `ngmux new -s work`, `ngmux attach -t work`
 - **scrollback + copy-mode**: scroll history, select text, yank to a paste
-  buffer, paste it back
+  buffer, paste it back (and to the OS clipboard via OSC 52 — `set set-clipboard off` to opt out)
+- **zoom** a pane full-screen (`Ctrl-b z`), **flash pane numbers** (`Ctrl-b q`),
+  **swap** / **break** / **join** panes (`Ctrl-b {` `}` `!`, `join-pane -s N`)
+- **double-width characters** (CJK, emoji) render across two columns in panes and the status bar
 - **config file** (`~/.config/ngmux/ngmux.conf`): custom prefix key, key
   bindings, history limit, default shell, status-bar colours
 - **command layer**: `ngmux <command> [args]` scripts the running server

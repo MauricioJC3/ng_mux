@@ -102,3 +102,31 @@ func itoa(n int) string {
 	}
 	return string(d)
 }
+
+func TestSnapshotCarriesGlyphWidth(t *testing.T) {
+	term := New(10, 3, nil)
+	term.Write([]byte("名a"))
+	s := term.Snapshot()
+
+	if c := s.At(0, 0); c.Ch != '名' || c.Width != 2 {
+		t.Fatalf("cell(0,0) = %#U width=%d, want '名' width 2", c.Ch, c.Width)
+	}
+	if c := s.At(1, 0); c.Width != 0 {
+		t.Fatalf("cell(1,0) width = %d, want 0 (spacer after a wide glyph)", c.Width)
+	}
+	if c := s.At(2, 0); c.Ch != 'a' || c.Width != 1 {
+		t.Fatalf("cell(2,0) = %#U width=%d, want 'a' width 1", c.Ch, c.Width)
+	}
+}
+
+func TestScrollbackViewKeepsGlyphWidth(t *testing.T) {
+	term := New(10, 3, nil)
+	term.Write([]byte("名b"))
+	s := term.ScrollbackView(0, 3) // offset 0 -> the live screen
+	if c := s.At(0, 0); c.Ch != '名' || c.Width != 2 {
+		t.Fatalf("scrollback cell(0,0) = %#U width=%d, want '名' width 2", c.Ch, c.Width)
+	}
+	if c := s.At(1, 0); c.Width != 0 {
+		t.Fatalf("scrollback cell(1,0) width = %d, want 0", c.Width)
+	}
+}

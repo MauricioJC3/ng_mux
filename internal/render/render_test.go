@@ -1,8 +1,10 @@
 package render
 
 import (
+	"bytes"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/MauricioJC3/ng_mux/internal/layout"
 	"github.com/MauricioJC3/ng_mux/internal/vterm"
@@ -116,5 +118,94 @@ func TestComposeNoBadgeWhenEmpty(t *testing.T) {
 	f := Compose(21, 8, []PaneView{pv}, "", DefaultStatusStyle)
 	if got := strings.TrimSpace(rowString(f, 3)); got != "" {
 		t.Fatalf("row 3 = %q, want blank when no badge is set", got)
+	}
+}
+
+// wideSnap builds a 1-row snapshot: a wide glyph at column 0 (+ its spacer at
+// column 1), then the runes of tail starting at column 2.
+func wideSnap(cols int, wide rune, tail string) *vterm.Snapshot {
+	s := &vterm.Snapshot{Cols: cols, Rows: 1, Cells: make([]vterm.Cell, cols)}
+	for i := range s.Cells {
+		s.Cells[i] = vterm.Cell{Ch: ' ', FG: vterm.ColorDefault, BG: vterm.ColorDefault, Width: 1}
+	}
+	s.Cells[0] = vterm.Cell{Ch: wide, FG: vterm.ColorDefault, BG: vterm.ColorDefault, Width: 2}
+	s.Cells[1] = vterm.Cell{Ch: 0, FG: vterm.ColorDefault, BG: vterm.ColorDefault, Width: 0}
+	for i, r := range tail {
+		if 2+i < cols {
+			s.Cells[2+i] = vterm.Cell{Ch: r, FG: vterm.ColorDefault, BG: vterm.ColorDefault, Width: 1}
+		}
+	}
+	return s
+}
+
+func TestComposeWideGlyphSpansTwoColumns(t *testing.T) {
+	pv := PaneView{ID: 1, Rect: layout.Rect{X: 0, Y: 0, W: 6, H: 1}, Snap: wideSnap(6, '名', "ab")}
+	f := Compose(6, 2, []PaneView{pv}, "", DefaultStatusStyle)
+
+	if c := f.at(0, 0); c.Ch != '名' || c.Width != 2 {
+		t.Fatalf("cell(0,0) = %#U width=%d, want '名' width 2", c.Ch, c.Width)
+	}
+	if c := f.at(1, 0); c.Width != 0 {
+		t.Fatalf("cell(1,0) width = %d, want 0 (spacer)", c.Width)
+	}
+	if c := f.at(2, 0); c.Ch != 'a' {
+		t.Fatalf("cell(2,0) = %#U, want 'a' — content after a wide glyph must not shift", c.Ch)
+	}
+}
+
+// stripANSI returns just the printable runes of a Paint stream.
+func stripANSI(b []byte) string {
+	var out []rune
+	for i := 0; i < len(b); i++ {
+		if b[i] == 0x1b {
+			for i < len(b) && b[i] != 'H' && b[i] != 'm' && b[i] != 'J' && b[i] != 'l' && b[i] != 'h' {
+				i++
+			}
+			continue
+		}
+		r, sz := utf8.DecodeRune(b[i:])
+		if sz > 1 || (b[i] >= ' ' && b[i] < 0x7f) {
+			out = append(out, r)
+		}
+		i += sz - 1
+	}
+	return string(out)
+}
+
+func TestPaintWideGlyphEmittedOnceAndAligned(t *testing.T) {
+	next := Compose(6, 2, []PaneView{{
+		ID: 1, Rect: layout.Rect{X: 0, Y: 0, W: 6, H: 1}, Snap: wideSnap(6, '名', "XY"),
+	}}, "", DefaultStatusStyle)
+
+	got := stripANSI(Paint(nil, next))
+	// The wide glyph is followed directly by X and Y: no spurious space from
+	// the spacer cell would leave "名 XY" instead.
+	if !strings.Contains(got, "名XY") {
+		t.Fatalf("painted text = %q, want it to contain %q", got, "名XY")
+	}
+	if strings.Count(got, "名") != 1 {
+		t.Fatalf("wide glyph emitted %d times, want 1 (text=%q)", strings.Count(got, "名"), got)
+	}
+}
+
+func TestPaintWideGlyphDiffLeavesLeadAlone(t *testing.T) {
+	mk := func(tail string) *Frame {
+		return Compose(6, 2, []PaneView{{
+			ID: 1, Rect: layout.Rect{X: 0, Y: 0, W: 6, H: 1}, Snap: wideSnap(6, '名', tail),
+		}}, "", DefaultStatusStyle)
+	}
+	prev, next := mk("X"), mk("Y")
+
+	out := Paint(prev, next)
+	got := stripANSI(out)
+	if strings.Contains(got, "名") {
+		t.Fatalf("diff re-emitted the unchanged wide glyph: %q", got)
+	}
+	if !strings.Contains(got, "Y") {
+		t.Fatalf("diff did not emit the changed cell: %q", got)
+	}
+	// The change is at column 2 (0-indexed) -> the move must target column 3.
+	if !bytes.Contains(out, []byte("\x1b[1;3H")) {
+		t.Fatalf("expected a cursor move to row 1 col 3, got %q", out)
 	}
 }
