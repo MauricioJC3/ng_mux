@@ -102,9 +102,10 @@ func (w *window) enterCopy(cols, rows int) {
 	p.copy = newCopyState(max1(r.W), max1(r.H))
 }
 
-// removePane drops a pane, collapses the tree, and moves focus to its sibling.
-// It reports whether the window is now empty.
-func (w *window) removePane(id layout.PaneID) (empty bool) {
+// removePane drops a pane, collapses the tree, moves focus to its sibling, and
+// re-flows the surviving panes into the freed space (cols/rows is the current
+// content area). It reports whether the window is now empty.
+func (w *window) removePane(id layout.PaneID, cols, rows int) (empty bool) {
 	p, ok := w.panes[id]
 	if !ok {
 		return len(w.panes) == 0
@@ -121,6 +122,7 @@ func (w *window) removePane(id layout.PaneID) (empty bool) {
 			w.active = focus
 		}
 	}
+	w.applyLayout(cols, rows)
 	return false
 }
 
