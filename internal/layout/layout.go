@@ -83,27 +83,47 @@ func compute(n *Node, r Rect, out map[PaneID]Rect) {
 }
 
 // splitRect divides r into two sub-rectangles separated by a one-cell divider.
+// The two children plus the divider always add up to exactly r along the split
+// axis, so no child can ever escape r no matter how deeply (or impossibly)
+// nested the tree is. Each side is kept to at least one cell whenever there is
+// room for the divider, so a crowded tree degrades by shrinking panes evenly
+// rather than collapsing some to zero and leaving a phantom band.
 func splitRect(o Orientation, r Rect, ratio float64) (a, b Rect) {
 	if o == Horizontal {
-		avail := r.W - dividerSize
-		if avail < 0 {
-			avail = 0
-		}
-		aw := int(float64(avail) * ratio)
-		bw := avail - aw
+		aw, dv, bw := splitAxis(r.W, ratio)
 		a = Rect{X: r.X, Y: r.Y, W: aw, H: r.H}
-		b = Rect{X: r.X + aw + dividerSize, Y: r.Y, W: bw, H: r.H}
+		b = Rect{X: r.X + aw + dv, Y: r.Y, W: bw, H: r.H}
 		return a, b
 	}
-	avail := r.H - dividerSize
-	if avail < 0 {
-		avail = 0
-	}
-	ah := int(float64(avail) * ratio)
-	bh := avail - ah
+	ah, dv, bh := splitAxis(r.H, ratio)
 	a = Rect{X: r.X, Y: r.Y, W: r.W, H: ah}
-	b = Rect{X: r.X, Y: r.Y + ah + dividerSize, W: r.W, H: bh}
+	b = Rect{X: r.X, Y: r.Y + ah + dv, W: r.W, H: bh}
 	return a, b
+}
+
+// splitAxis partitions total cells into child A, a divider, and child B. It
+// guarantees aSpan + divider + bSpan == max(total, 0). When there is no room
+// for the divider the divider is dropped; A gets at least one cell and at most
+// all of the remainder once the divider fits.
+func splitAxis(total int, ratio float64) (aSpan, divider, bSpan int) {
+	if total <= 0 {
+		return 0, 0, 0
+	}
+	if total <= dividerSize {
+		return total, 0, 0
+	}
+	avail := total - dividerSize // >= 1
+	a := int(float64(avail) * ratio)
+	if a < 1 {
+		a = 1
+	}
+	if a > avail-1 {
+		a = avail - 1
+	}
+	if a < 0 {
+		a = 0
+	}
+	return a, dividerSize, avail - a
 }
 
 // Split replaces the leaf holding target with an interior node whose A child
