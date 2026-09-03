@@ -163,6 +163,34 @@ func TestSelectLayoutKeepsPaneCount(t *testing.T) {
 	}
 }
 
+// select-layout must refuse a preset that cannot give every pane the minimum
+// size, and leave the current layout untouched — the same floor an interactive
+// split enforces.
+func TestSelectLayoutRefusesWhenNoRoom(t *testing.T) {
+	srv, _, sess := setupSession(t)
+	exec(t, srv, "split-window -h")
+	exec(t, srv, "split-window -h")
+	exec(t, srv, "split-window -h") // 4 panes across
+
+	sess.resize(14, 12) // too narrow for 4 panes at the minimum width
+
+	sess.mu.Lock()
+	before := layout.Panes(sess.windows[sess.cur].tree)
+	sess.mu.Unlock()
+
+	_, err := srv.execCommand(nil, "select-layout even-horizontal")
+	if err == nil || !strings.Contains(err.Error(), "not enough room") {
+		t.Fatalf("err = %v, want a 'not enough room' error", err)
+	}
+
+	sess.mu.Lock()
+	after := layout.Panes(sess.windows[sess.cur].tree)
+	sess.mu.Unlock()
+	if len(after) != len(before) {
+		t.Fatalf("refused select-layout still changed the tree: %v -> %v", before, after)
+	}
+}
+
 func TestResizePaneWidensActivePane(t *testing.T) {
 	srv, _, sess := setupSession(t)
 	exec(t, srv, "split-window -h") // active is now the right-hand pane
