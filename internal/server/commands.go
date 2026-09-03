@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/MauricioJC3/ng_mux/internal/layout"
 	"github.com/MauricioJC3/ng_mux/internal/protocol"
@@ -71,6 +72,7 @@ func commandList() []command {
 		{name: "select-layout", aliases: []string{"selectl"}, run: cmdSelectLayout},
 		{name: "resize-pane", aliases: []string{"resizep"}, run: cmdResizePane},
 		{name: "send-keys", aliases: []string{"send"}, run: cmdSendKeys},
+		{name: "display-panes", aliases: []string{"displayp"}, run: cmdDisplayPanes},
 		{name: "copy-mode", run: cmdCopyMode},
 		{name: "paste-buffer", run: cmdPasteBuffer},
 		{name: "new-session", aliases: []string{"new"}, run: cmdNewSession},
@@ -240,6 +242,17 @@ func cmdSendKeys(c *cmdCtx) (string, error) {
 		}
 		return nil
 	})
+}
+
+// displayPanesTime is how long the per-pane index badges stay up, matching
+// tmux's default display-panes-time.
+const displayPanesTime = time.Second
+
+func cmdDisplayPanes(c *cmdCtx) (string, error) {
+	c.sess.mu.Lock()
+	c.sess.displayPanesUntil = time.Now().Add(displayPanesTime)
+	c.sess.mu.Unlock()
+	return "", nil
 }
 
 func cmdCopyMode(c *cmdCtx) (string, error) {

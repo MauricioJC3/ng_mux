@@ -91,3 +91,30 @@ func rowString(f *Frame, y int) string {
 	}
 	return b.String()
 }
+
+func TestComposeBadgeCentredInPane(t *testing.T) {
+	pv := PaneView{
+		ID:    1,
+		Rect:  layout.Rect{X: 0, Y: 0, W: 21, H: 7},
+		Snap:  snapWith(21, 7, ""),
+		Badge: " 3 ",
+	}
+	f := Compose(21, 8, []PaneView{pv}, "", DefaultStatusStyle)
+
+	// Centred: (21-3)/2 = 9 on row 7/2 = 3.
+	if got := rowString(f, 3); got[9:12] != " 3 " {
+		t.Fatalf("row 3 = %q, want %q at column 9", got, " 3 ")
+	}
+	c := f.at(10, 3)
+	if c.Ch != '3' || c.Attr&vterm.AttrReverse == 0 {
+		t.Fatalf("badge digit cell = %+v, want '3' in reverse video", c)
+	}
+}
+
+func TestComposeNoBadgeWhenEmpty(t *testing.T) {
+	pv := PaneView{ID: 1, Rect: layout.Rect{X: 0, Y: 0, W: 21, H: 7}, Snap: snapWith(21, 7, "")}
+	f := Compose(21, 8, []PaneView{pv}, "", DefaultStatusStyle)
+	if got := strings.TrimSpace(rowString(f, 3)); got != "" {
+		t.Fatalf("row 3 = %q, want blank when no badge is set", got)
+	}
+}

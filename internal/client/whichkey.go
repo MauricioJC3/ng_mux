@@ -29,6 +29,7 @@ var builtinWhichKey = []whichKeyRow{
 	{"← ↑ ↓ →", "focus pane by direction"},
 	{"H J K L", "resize the focused pane"},
 	{"z", "zoom the focused pane — toggle full screen"},
+	{"q", "flash each pane's index number"},
 	{"x", "close the focused pane"},
 	{"c", "new window"},
 	{"n / p", "next / previous window"},

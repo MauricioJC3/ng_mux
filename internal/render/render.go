@@ -97,6 +97,9 @@ type PaneView struct {
 	// Overlay, when non-empty, is printed in reverse video at the pane's
 	// top-right corner (used for the "-- COPY 12/340 --" indicator).
 	Overlay string
+	// Badge, when non-empty, is printed in reverse video centred in the pane
+	// (used by display-panes to show each pane's index).
+	Badge string
 	// Sel, when non-nil, highlights an inclusive cell range in the pane's own
 	// coordinates (used by copy-mode selection).
 	Sel *Selection
@@ -211,6 +214,14 @@ func ComposeStyledInto(dst *Frame, cols, rows int, panes []PaneView, status []St
 			}
 			for i, ch := range p.Overlay {
 				f.set(ox+i, r.Y, Cell{Ch: ch, FG: 0, BG: 3, Attr: vterm.AttrReverse})
+			}
+		}
+		if p.Badge != "" {
+			runes := []rune(p.Badge)
+			bx := r.X + (r.W-len(runes))/2
+			by := r.Y + r.H/2
+			for i, ch := range runes {
+				f.set(bx+i, by, Cell{Ch: ch, FG: 0, BG: 6, Attr: vterm.AttrReverse | vterm.AttrBold})
 			}
 		}
 	}
