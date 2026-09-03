@@ -6,7 +6,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode/utf8"
 
 	"github.com/MauricioJC3/ng_mux/internal/layout"
 	"github.com/MauricioJC3/ng_mux/internal/protocol"
@@ -437,7 +436,7 @@ func (s *session) buildStatus(cols int) []render.StatusSegment {
 		segs = append(segs, render.StatusSegment{
 			Text: text, FG: render.InheritColour, BG: render.InheritColour, Attr: attr,
 		})
-		col += utf8.RuneCountInString(text)
+		col += vterm.StringWidth(text)
 	}
 
 	add(fmt.Sprintf(" [%s] ", s.name), vterm.AttrBold)
@@ -452,7 +451,7 @@ func (s *session) buildStatus(cols int) []render.StatusSegment {
 		x0 := col
 		add(entry, attr)
 		s.statusHits = append(s.statusHits, statusHit{
-			x0: x0, x1: x0 + utf8.RuneCountInString(entry) - 1, // exclude the trailing space
+			x0: x0, x1: x0 + vterm.StringWidth(entry) - 1, // exclude the trailing space
 			action: "select-window", n: i,
 		})
 	}
@@ -474,10 +473,10 @@ func (s *session) buildStatus(cols int) []render.StatusSegment {
 	// Prefer "<hint> <clock>"; if that will not fit, drop the hint; if even the
 	// clock will not fit, leave the row to be clipped at the frame edge.
 	right := statusHint + clock
-	if col+1+utf8.RuneCountInString(right) > cols {
+	if col+1+vterm.StringWidth(right) > cols {
 		right = clock
 	}
-	if pad := cols - col - utf8.RuneCountInString(right); pad >= 1 {
+	if pad := cols - col - vterm.StringWidth(right); pad >= 1 {
 		add(strings.Repeat(" ", pad), 0)
 		if right != clock {
 			add(statusHint, 0)

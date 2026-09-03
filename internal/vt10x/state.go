@@ -20,6 +20,15 @@ const (
 	attrWrap
 )
 
+// AttrWide marks the lead cell of a double-width glyph; AttrWideTail marks the
+// blank spacer cell that follows it. They are exported so a renderer can lay a
+// wide glyph across two columns and skip its spacer. (Upstream vt10x has no
+// wide-character support at all.)
+const (
+	AttrWide     = 1 << 7
+	AttrWideTail = 1 << 8
+)
+
 const (
 	cursorDefault = 1 << iota
 	cursorWrapNext

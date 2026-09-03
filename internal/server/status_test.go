@@ -89,3 +89,36 @@ func TestBuildStatusNarrowTerminalDropsHint(t *testing.T) {
 		t.Errorf("hint should be dropped when it will not fit: %q", text)
 	}
 }
+
+// A window name with a double-width character must be measured in columns, not
+// runes: the [+] hit region, the padding and the clock all key off that width.
+func TestBuildStatusAccountsForWideWindowName(t *testing.T) {
+	srv, _, sess := setupSession(t)
+	exec(t, srv, "rename-window 名前") // 4 display columns, 2 runes
+
+	sess.mu.Lock()
+	segs := sess.buildStatus(80)
+	hits := append([]statusHit(nil), sess.statusHits...)
+	name := sess.windows[sess.cur].name
+	sess.mu.Unlock()
+
+	if name != "名前" {
+		t.Fatalf("window name = %q, want 名前", name)
+	}
+
+	var plusX0 int
+	for _, h := range hits {
+		if h.action == "new-window" {
+			plusX0 = h.x0
+		}
+	}
+	// " [0] " (5) + "0:" (2) + name (4 cols) + "* " (2) = 13 -> [+] starts at 13.
+	if plusX0 != 13 {
+		t.Fatalf("[+] hit x0 = %d, want 13 (wide name counted as 4 columns)", plusX0)
+	}
+
+	// The bar is still exactly one screen wide in display columns.
+	if w := vterm.StringWidth(statusText(segs)); w != 80 {
+		t.Fatalf("status bar width = %d columns, want 80", w)
+	}
+}

@@ -34,15 +34,32 @@ const (
 // above the 0xRRGGBB truecolor range so it can never collide with a real one.
 const ColorDefault uint32 = 1 << 24
 
-// Cell is one character position in the emulator grid.
+// Cell is one character position in the emulator grid. Width is 2 for the lead
+// cell of a double-width glyph, 0 for the spacer cell that follows it, and 1
+// for every ordinary cell.
 type Cell struct {
-	Ch   rune
-	FG   uint32 // palette index [0,256) or ColorDefault or (>=256) packed 0xRRGGBB
-	BG   uint32
-	Attr uint16
+	Ch    rune
+	FG    uint32 // palette index [0,256) or ColorDefault or (>=256) packed 0xRRGGBB
+	BG    uint32
+	Attr  uint16
+	Width uint8
 }
 
-func blankCell() Cell { return Cell{Ch: ' ', FG: ColorDefault, BG: ColorDefault} }
+func blankCell() Cell { return Cell{Ch: ' ', FG: ColorDefault, BG: ColorDefault, Width: 1} }
+
+// RuneWidth reports how many terminal columns r occupies (1 or 2). It is the
+// same conservative width table the emulator uses to lay out its grid, exposed
+// so callers that render their own text (the status bar) stay aligned with it.
+func RuneWidth(r rune) int { return vt10x.RuneWidth(r) }
+
+// StringWidth is the total column width of s.
+func StringWidth(s string) int {
+	w := 0
+	for _, r := range s {
+		w += RuneWidth(r)
+	}
+	return w
+}
 
 // Snapshot is an immutable copy of a screen region at one instant.
 type Snapshot struct {
@@ -417,11 +434,20 @@ func rowBlank(row []Cell) bool {
 }
 
 func toCell(g vt10x.Glyph) Cell {
+	fg, bg, attr := convColor(g.FG), convColor(g.BG), convAttr(g.Mode)
+	if g.Mode&vt10x.AttrWideTail != 0 {
+		// Spacer after a double-width glyph: no character, zero width.
+		return Cell{Ch: 0, FG: fg, BG: bg, Attr: attr, Width: 0}
+	}
 	ch := g.Char
 	if ch == 0 {
 		ch = ' '
 	}
-	return Cell{Ch: ch, FG: convColor(g.FG), BG: convColor(g.BG), Attr: convAttr(g.Mode)}
+	width := uint8(1)
+	if g.Mode&vt10x.AttrWide != 0 {
+		width = 2
+	}
+	return Cell{Ch: ch, FG: fg, BG: bg, Attr: attr, Width: width}
 }
 
 // convColor maps a vt10x.Color to our uint32 encoding.
