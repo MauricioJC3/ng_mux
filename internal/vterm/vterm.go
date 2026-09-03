@@ -1,7 +1,8 @@
-// Package vterm wraps a headless VT100/xterm emulator (github.com/hinshun/vt10x)
-// behind a small, stable surface: feed it the raw bytes a pty produces, ask it
-// for a rectangular snapshot of cells plus the cursor. The rest of ngmux never
-// touches vt10x directly, so the emulator can be swapped later without churn.
+// Package vterm wraps a headless VT100/xterm emulator (internal/vt10x, an
+// in-tree fork of github.com/hinshun/vt10x) behind a small, stable surface:
+// feed it the raw bytes a pty produces, ask it for a rectangular snapshot of
+// cells plus the cursor. The rest of ngmux never touches vt10x directly, so the
+// emulator can be swapped later without churn.
 //
 // vt10x itself keeps no scrollback, so this package reconstructs one: before
 // each write it snapshots the grid, and after the write it detects a vertical
@@ -15,7 +16,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/hinshun/vt10x"
+	"github.com/MauricioJC3/ng_mux/internal/vt10x"
 )
 
 // Attribute bits on a Cell. These mirror vt10x's internal glyph flags, which
