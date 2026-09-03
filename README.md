@@ -209,7 +209,8 @@ internal/
   ipc               transport: Unix domain socket / Windows named pipe
   config            ngmux.conf parser (prefix, binds, limits, colours)
   ptyx              pseudo-terminal wrapper (go-pty; embedded winpty fallback)
-  vterm             VT100/xterm emulator wrapper (hinshun/vt10x) + scrollback
+  vt10x             in-tree fork of hinshun/vt10x, the VT100/xterm emulator
+  vterm             vt10x wrapper: raw bytes in, cell snapshot out, + scrollback
   layout            binary split tree -> pane rectangles; split / remove / resize
   render            composite panes + borders + status bar, ANSI frame diffing
   termio            client's real terminal: raw mode, size, resize events
